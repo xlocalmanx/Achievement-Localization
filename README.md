@@ -1,4 +1,4 @@
-# Bindata Tools
+# Achievement Localization
 
 Steam 成就 .bin 文件的查看和编辑工具。
 
@@ -81,10 +81,19 @@ node edit_bin.js stats.bin set 1 descriptionCN "你解锁了抹大拉"
 
 两个语言各自独立。填写中文后保存生成的 `.bin` 文件，Steam 中文客户端即可显示对应内容。
 
-成就文件在steam的安装目录的~\appcache\stats中。
+成就文件在 Steam 安装目录的 `~/appcache/stats/` 中。
 
-本项目以“以撒的结合”为例。在steamdb查询到游戏id为250900，于是在stats文件夹找到UserGameStatsSchema_250900.bin
-复制出来，让ai读取本项目文件和成就文件，让它自己汉化即可，将得到的文件重命名为UserGameStatsSchema_250900.bin并替换回原文件夹，将其属性改为“只读”，重启steam即可。
+## 使用示例
 
-理论上steam所有成就没有中文的都可以这样操作，但我没试过。
-如果不行就反复鞭笞ai吧(_´ω｀_)
+本项目以”以撒的结合”为例：
+
+1. 在 [SteamDB](https://steamdb.info/) 查询到游戏 ID 为 `250900`
+2. 在 `stats` 文件夹中找到 `UserGameStatsSchema_250900.bin`
+3. 复制出来，让 AI 读取本项目文件和成就文件，自行汉化，也可找到合适的汉化文本如wiki等让ai进行替换
+4. 将得到的文件重命名为 `UserGameStatsSchema_250900.bin` 并替换回原文件夹
+5. 将文件属性改为”只读”
+6. 重启 Steam
+
+> 理论上所有 Steam 成就没有中文的游戏都可以这样操作（未验证）。
+>字段数据格式应该是一样的
+> 如果不行就反复鞭笞 AI 吧 相信它应该能解决问题的_(´ω｀)_
