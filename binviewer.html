@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bin Viewer - Achievement Editor</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1b23;
+    --border: #2a2b35;
+    --text: #e1e2e6;
+    --text-dim: #888;
+    --accent: #5b8def;
+    --accent-hover: #7aa2f7;
+    --green: #3fb950;
+    --red: #f85149;
+    --yellow: #d29922;
+    --orange: #d4782f;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+  }
+  .header h1 { font-size: 16px; font-weight: 600; white-space: nowrap; }
+
+  .drop-zone {
+    flex: 1;
+    min-width: 150px;
+    border: 1px dashed var(--border);
+    border-radius: 6px;
+    padding: 6px 14px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text-dim);
+    position: relative;
+    transition: all .2s;
+  }
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--accent);
+    color: var(--text);
+    background: rgba(91,141,239,.08);
+  }
+  .drop-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+  .stats {
+    display: flex;
+    gap: 16px;
+    padding: 8px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    align-items: center;
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+  .stats .stat { white-space: nowrap; }
+  .stats .stat b { font-weight: 600; }
+  .stat-total b { color: var(--text); }
+  .stat-hidden b { color: var(--yellow); }
+  .stat-visible b { color: var(--green); }
+
+  .filter-bar {
+    display: flex;
+    gap: 8px;
+    padding: 8px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+  }
+  .search-input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 5px 10px;
+    color: var(--text);
+    font-size: 12px;
+    flex: 1;
+    min-width: 140px;
+    outline: none;
+  }
+  .search-input:focus { border-color: var(--accent); }
+  .filter-bar label {
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .filter-bar input[type="checkbox"] { accent-color: var(--accent); }
+  .btn {
+    background: var(--border);
+    border: none;
+    border-radius: 5px;
+    color: var(--text);
+    padding: 5px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background .2s;
+    white-space: nowrap;
+  }
+  .btn:hover { background: #3a3b45; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-green { background: var(--green); color: #fff; }
+  .btn-green:hover { background: #4cda64; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  .table-wrap {
+    overflow: auto;
+    flex: 1;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  thead { position: sticky; top: 0; z-index: 1; }
+  th {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 6px 8px;
+    text-align: left;
+    font-weight: 500;
+    cursor: pointer;
+    user-select: none;
+  }
+  th:hover { color: var(--accent); }
+  th .sort-arrow { margin-left: 3px; opacity: .3; font-size: 10px; }
+  th.sorted .sort-arrow { opacity: 1; }
+  td {
+    padding: 5px 8px;
+    border-bottom: 1px solid rgba(42,43,53,.5);
+  }
+  tr:hover td { background: rgba(91,141,239,.06); }
+  tr.edited td { background: rgba(210,153,34,.08); }
+  tr.hidden-row td:first-child { border-left: 3px solid var(--yellow); padding-left: 5px; }
+  .modified-badge {
+    display: inline-block;
+    background: var(--orange);
+    color: #fff;
+    font-size: 10px;
+    padding: 0 5px;
+    border-radius: 3px;
+    font-weight: 600;
+    margin-left: 4px;
+  }
+  .hidden-badge {
+    display: inline-block;
+    background: var(--yellow);
+    color: #000;
+    font-size: 10px;
+    padding: 0 5px;
+    border-radius: 3px;
+    font-weight: 600;
+  }
+  .ordinal { color: var(--text-dim); font-size: 11px; }
+  .desc-cell { max-width: 280px; overflow: hidden; text-overflow: ellipsis; }
+  .no-data, .empty-filter {
+    padding: 50px 20px; text-align: center; color: var(--text-dim); font-size: 14px;
+  }
+
+  /* === Detail/Edit Panel === */
+  .detail-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.65);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  .detail-overlay.open { display: flex; }
+  .detail-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    max-width: 540px;
+    width: 92%;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+  .detail-panel h2 { font-size: 16px; margin-bottom: 2px; }
+  .detail-panel .ord-tag { color: var(--text-dim); font-size: 12px; margin-bottom: 12px; }
+
+  .edit-field {
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .edit-field:last-of-type { border: none; }
+  .edit-field .label {
+    font-size: 10px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    letter-spacing: .5px;
+    margin-bottom: 2px;
+  }
+  .edit-field .value {
+    font-size: 13px;
+    word-break: break-all;
+  }
+  .edit-field input, .edit-field textarea, .edit-field select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 8px;
+    color: var(--text);
+    font-size: 13px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .edit-field input:focus, .edit-field textarea:focus { border-color: var(--accent); }
+  .edit-field textarea { resize: vertical; min-height: 36px; }
+
+  .detail-buttons {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .detail-buttons .btn { flex: 1; padding: 7px; font-size: 13px; }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    z-index: 200;
+    opacity: 0;
+    transition: opacity .3s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+  .toast.success { border-color: var(--green); }
+  .toast.error { border-color: var(--red); }
+
+  @media (max-width: 640px) {
+    .header { padding: 10px 12px; }
+    .stats { padding: 6px 12px; font-size: 11px; gap: 10px; }
+    .filter-bar { padding: 6px 12px; }
+    .detail-panel { padding: 14px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>&#9745; Bin Editor</h1>
+  <div class="drop-zone" id="dropZone">
+    点击选择 .bin 文件，或拖拽到此处
+    <input type="file" id="fileInput" accept=".bin">
+  </div>
+  <button class="btn btn-green" id="saveBtn" disabled>&#128190; 另存为</button>
+</div>
+
+<div class="stats">
+  <span class="stat stat-total">总计: <b id="statTotal">-</b></span>
+  <span class="stat stat-visible">可见: <b id="statVisible">-</b></span>
+  <span class="stat stat-hidden">隐藏: <b id="statHidden">-</b></span>
+  <span class="stat" style="color:var(--text-dim)">|</span>
+  <span class="stat">已修改: <b id="statModified">0</b></span>
+  <span class="stat">文件: <b id="statFile">-</b></span>
+  <span class="stat">大小: <b id="statSize">-</b></span>
+</div>
+
+<div class="filter-bar">
+  <input class="search-input" id="searchInput" placeholder="搜索..." spellcheck="false">
+  <label><input type="checkbox" id="showHidden" checked> 隐藏</label>
+  <label><input type="checkbox" id="showNoIcon"> 无图标</label>
+  <label><input type="checkbox" id="showModified" checked> 已修改</label>
+  <label><input type="checkbox" id="groupByOrdinal"> 分组</label>
+  <button class="btn" id="exportBtn">&#128196; 导出 CSV</button>
+  <button class="btn" id="resetBtn" disabled>&#8634; 重置</button>
+</div>
+
+<div class="table-wrap" id="tableWrap">
+  <table>
+    <thead id="tableHead">
+      <tr>
+        <th data-col="ordinal"># <span class="sort-arrow">&#9660;</span></th>
+        <th data-col="displayName">名称 <span class="sort-arrow">&#9660;</span></th>
+        <th data-col="displayNameCN">中文名 <span class="sort-arrow">&#9660;</span></th>
+        <th data-col="token">Token <span class="sort-arrow">&#9660;</span></th>
+        <th data-col="description">描述 <span class="sort-arrow">&#9660;</span></th>
+        <th data-col="descriptionCN">中文描述 <span class="sort-arrow">&#9660;</span></th>
+        <th data-col="hidden" style="width:60px">隐藏 <span class="sort-arrow">&#9660;</span></th>
+        <th data-col="icon">图标 <span class="sort-arrow">&#9660;</span></th>
+        <th data-col="iconGray">灰图标 <span class="sort-arrow">&#9660;</span></th>
+      </tr>
+    </thead>
+    <tbody id="tableBody">
+      <tr><td colspan="9"><div class="no-data">选择一个 .bin 文件来查看和编辑成就数据</div></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="detail-overlay" id="detailOverlay">
+  <div class="detail-panel">
+    <h2 id="detailName"></h2>
+    <div class="ord-tag">#<span id="detailOrdinal"></span></div>
+
+    <div class="edit-field">
+      <div class="label">显示名称</div>
+      <input id="editDisplayName" data-field="displayName">
+    </div>
+    <div class="edit-field">
+      <div class="label">中文名称</div>
+      <input id="editDisplayNameCN" data-field="displayNameCN">
+    </div>
+    <div class="edit-field">
+      <div class="label">Token</div>
+      <input id="editToken" data-field="token">
+    </div>
+    <div class="edit-field">
+      <div class="label">描述</div>
+      <textarea id="editDescription" data-field="description" rows="2"></textarea>
+    </div>
+    <div class="edit-field">
+      <div class="label">中文描述</div>
+      <textarea id="editDescriptionCN" data-field="descriptionCN" rows="2"></textarea>
+    </div>
+    <div class="edit-field">
+      <div class="label">描述 Token</div>
+      <input id="editDescToken" data-field="descToken">
+    </div>
+    <div class="edit-field">
+      <div class="label"><label><input type="checkbox" id="editHidden"> 隐藏成就</label></div>
+    </div>
+    <div class="edit-field">
+      <div class="label">图标</div>
+      <input id="editIcon" data-field="icon">
+    </div>
+    <div class="edit-field">
+      <div class="label">灰色图标</div>
+      <input id="editIconGray" data-field="iconGray">
+    </div>
+
+    <div class="detail-buttons">
+      <button class="btn btn-primary" id="detailApply">&#10003; 应用</button>
+      <button class="btn" id="detailPrev">&#9664; 上一条</button>
+      <button class="btn" id="detailNext">下一条 &#9654;</button>
+      <button class="btn" id="detailClose">关闭</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// Binary Parser & Serializer
+// ============================================================
+
+function parseAchievements(data) {
+  const buf = new Uint8Array(data);
+  const achievements = [];
+  let pos = 0;
+
+  // Find first "name\x00<digit>"
+  const firstPos = findFirstRecord(buf, 0);
+  if (firstPos === -1) throw new Error('No achievement records found');
+  pos = firstPos;
+
+  let consecutiveFails = 0;
+  while (pos < buf.length && consecutiveFails < 3) {
+    // Skip non-structural bytes
+    pos = skipNonStructural(buf, pos);
+    if (pos >= buf.length) break;
+
+    // Check for "name\x00"
+    if (!matchAt(buf, pos, [0x6E, 0x61, 0x6D, 0x65, 0x00])) {
+      consecutiveFails++; pos++; continue;
+    }
+    consecutiveFails = 0;
+    pos += 5;
+
+    // Ordinal
+    let ord = '';
+    while (pos < buf.length && buf[pos] >= 0x30 && buf[pos] <= 0x39) {
+      ord += String.fromCharCode(buf[pos]); pos++;
+    }
+    const ordinal = parseInt(ord, 10);
+    if (buf[pos] === 0x00) pos++;
+    if (buf[pos] === 0x00) pos++;
+
+    let displayName = '', displayNameCN = '', token = '', description = '', descriptionCN = '', descToken = '';
+    let hidden = false, icon = '', iconGray = '';
+
+    // display field
+    if (buf[pos] === 0x64) { // 'd'
+      pos += 7; // "display"
+      if (buf[pos] === 0x00) pos++;
+      if (buf[pos] === 0x00) pos++;
+      if (buf[pos] === 0x6E) pos += 4; // "name"
+      if (buf[pos] === 0x00) pos++;
+      if (buf[pos] === 0x01) pos++;
+      pos = skipToNull(buf, pos) + 1;
+      const nameStart = pos;
+      pos = skipToNull(buf, pos) + 1;
+      displayName = decode(buf, nameStart, pos - 1);
+    }
+
+    if (buf[pos] === 0x01) pos++;
+
+    // token field
+    if (buf[pos] === 0x74) { // 't'
+      pos += 5; // "token"
+      if (buf[pos] === 0x00) pos++;
+      const tokStart = pos;
+      pos = skipToNull(buf, pos) + 1;
+      token = decode(buf, tokStart, pos - 1);
+    }
+
+    // Check for schinese displayName
+    if (pos + 9 < buf.length && buf[pos] === 0x01 && buf[pos+1] === 0x73 && buf[pos+2] === 0x63 && buf[pos+3] === 0x68 && buf[pos+4] === 0x69 && buf[pos+5] === 0x6e && buf[pos+6] === 0x65 && buf[pos+7] === 0x73 && buf[pos+8] === 0x65) {
+      pos += 10;
+      const cns = pos; pos = skipToNull(buf, pos) + 1;
+      displayNameCN = decode(buf, cns, pos - 1);
+    }
+
+    if (buf[pos] === 0x08) pos++;
+    if (buf[pos] === 0x00) pos++;
+
+    // desc field
+    if (buf[pos] === 0x64 && buf[pos+1] === 0x65 && buf[pos+2] === 0x73 && buf[pos+3] === 0x63) {
+      pos += 4;
+      if (buf[pos] === 0x00) pos++;
+      if (buf[pos] === 0x01) pos++;
+      pos = skipToNull(buf, pos) + 1;
+      const descStart = pos;
+      pos = skipToNull(buf, pos) + 1;
+      description = decode(buf, descStart, pos - 1);
+      if (buf[pos] === 0x01) pos++;
+      if (buf[pos] === 0x74) { // 't'
+        pos += 5;
+        if (buf[pos] === 0x00) pos++;
+        const dtStart = pos;
+        pos = skipToNull(buf, pos) + 1;
+        descToken = decode(buf, dtStart, pos - 1);
+      }
+
+      // Check for schinese description
+      if (pos + 9 < buf.length && buf[pos] === 0x01 && buf[pos+1] === 0x73 && buf[pos+2] === 0x63 && buf[pos+3] === 0x68 && buf[pos+4] === 0x69 && buf[pos+5] === 0x6e && buf[pos+6] === 0x65 && buf[pos+7] === 0x73 && buf[pos+8] === 0x65) {
+        pos += 10;
+        const cds = pos; pos = skipToNull(buf, pos) + 1;
+        descriptionCN = decode(buf, cds, pos - 1);
+      }
+    }
+
+    if (buf[pos] === 0x08) pos++;
+    if (buf[pos] === 0x00) pos++;
+    if (buf[pos] === 0x02) pos++;
+
+    // hidden field
+    if (buf[pos] === 0x68 && buf[pos+1] === 0x69) {
+      pos += 6; // "hidden"
+      if (buf[pos] === 0x00) pos++;
+      hidden = buf[pos] !== 0x00;
+      pos++;
+      // Skip to icon/icon_gray
+      while (pos < buf.length && !(buf[pos] === 0x69 && (buf[pos+4] === 0x00 || buf[pos+4] === 0x5F))) {
+        pos++;
+      }
+    }
+
+    // icon
+    if (matchAt(buf, pos, [0x69, 0x63, 0x6F, 0x6E, 0x00])) {
+      pos += 5;
+      const iconStart = pos;
+      pos = skipToNull(buf, pos) + 1;
+      icon = decode(buf, iconStart, pos - 1);
+      if (buf[pos] === 0x01) pos++;
+    }
+
+    // icon_gray
+    if (matchAt(buf, pos, [0x69, 0x63, 0x6F, 0x6E, 0x5F, 0x67, 0x72, 0x61, 0x79, 0x00])) {
+      pos += 10;
+      const igStart = pos;
+      pos = skipToNull(buf, pos) + 1;
+      iconGray = decode(buf, igStart, pos - 1);
+    }
+
+    achievements.push({ ordinal, displayName, displayNameCN, token, description, descriptionCN, descToken, hidden, icon, iconGray });
+
+    // Advance to next record
+    let found = false;
+    let sp = pos;
+    while (sp < buf.length - 6) {
+      if (buf[sp] === 0x08) { sp++; continue; }
+      if (buf[sp] === 0x00) { sp++; continue; }
+      if (matchAt(buf, sp, tAchBytes) && decode(buf, sp, sp+15) === 'type\x00ACHIEVEMENTS') {
+        sp += 5; sp = skipToNull(buf, sp) + 1;
+        if (buf[sp] === 0x02) sp++;
+        sp += 8;
+        if (buf[sp] === 0x00) sp++;
+        sp += 4;
+        if (buf[sp] === 0x00) sp++;
+        if (buf[sp] === 0x08) sp++;
+        if (buf[sp] === 0x00) sp++;
+        while (sp < buf.length && buf[sp] >= 0x30 && buf[sp] <= 0x39) sp++;
+        if (buf[sp] === 0x00) sp++;
+        if (buf[sp] === 0x00) sp++;
+        if (buf[sp] === 0x62) sp += 4;
+        if (buf[sp] === 0x00) sp++;
+        if (buf[sp] === 0x00) sp++;
+        if (buf[sp] === 0x30) sp++;
+        if (buf[sp] === 0x00) sp++;
+        if (buf[sp] === 0x00) sp++;
+        if (buf[sp] === 0x01) sp++;
+        continue;
+      }
+      if (buf[sp] === 0x6E && decode(buf, sp, sp+5) === 'name\x00') {
+        if (buf[sp+5] >= 0x30 && buf[sp+5] <= 0x39) { found = true; break; }
+      }
+      sp++;
+    }
+    if (!found) break;
+    pos = sp;
+  }
+  return achievements;
+}
+
+const tAchBytes = [0x74, 0x79, 0x70, 0x65, 0x00, 0x41, 0x43, 0x48, 0x49, 0x45, 0x56, 0x45, 0x4D, 0x45, 0x4E, 0x54, 0x53, 0x00];
+
+function findFirstRecord(buf, start) {
+  for (let i = start; i < buf.length - 6; i++) {
+    if (matchAt(buf, i, [0x6E, 0x61, 0x6D, 0x65, 0x00]) && buf[i+5] >= 0x30 && buf[i+5] <= 0x39) return i;
+  }
+  return -1;
+}
+
+function findNextRecord(buf, start) {
+  for (let i = start; i < buf.length - 6; i++) {
+    if (matchAt(buf, i, [0x6E, 0x61, 0x6D, 0x65, 0x00]) && buf[i+5] >= 0x30 && buf[i+5] <= 0x39) return i;
+  }
+  return -1;
+}
+
+function findAllRecordPositions(buf) {
+  const positions = [];
+  let pos = 0;
+  while (pos < buf.length) {
+    const idx = findNextRecord(buf, pos);
+    if (idx === -1) break;
+    positions.push(idx);
+    pos = idx + 1;
+  }
+  return positions;
+}
+
+function skipNonStructural(buf, pos) {
+  while (pos < buf.length) {
+    if (buf[pos] === 0x08) { pos++; continue; }
+    if (buf[pos] === 0x00) { pos++; continue; }
+    if (buf[pos] >= 0x30 && buf[pos] <= 0x39) {
+      while (pos < buf.length && buf[pos] >= 0x30 && buf[pos] <= 0x39) pos++;
+      if (buf[pos] === 0x00) pos++;
+      if (buf[pos] === 0x01) pos++;
+      continue;
+    }
+    break;
+  }
+  return pos;
+}
+
+function matchAt(buf, pos, pattern) {
+  if (pos + pattern.length > buf.length) return false;
+  for (let i = 0; i < pattern.length; i++) {
+    if (buf[pos + i] !== pattern[i]) return false;
+  }
+  return true;
+}
+
+function skipToNull(buf, pos) {
+  while (pos < buf.length && buf[pos] !== 0) pos++;
+  return pos;
+}
+
+function decode(buf, start, end) {
+  return new TextDecoder().decode(buf.slice(start, end));
+}
+
+// ============================================================
+// Serializer
+// ============================================================
+
+function concatArrays(arrays) {
+  let len = 0;
+  for (const a of arrays) len += a.length;
+  const r = new Uint8Array(len);
+  let off = 0;
+  for (const a of arrays) { r.set(a, off); off += a.length; }
+  return r;
+}
+
+function serializeRecord(a, ordinalStr) {
+  const enc = new TextEncoder();
+  const parts = [];
+
+  // name\x00<ordinal>\x00\x00
+  parts.push(enc.encode('name\x00' + ordinalStr + '\x00\x00'));
+
+  // display\x00\x00name\x00\x01english\x00<name>\x00
+  parts.push(enc.encode('display\x00\x00name\x00\x01english\x00' + (a.displayName || '') + '\x00'));
+
+  // \x01token\x00<token>\x00
+  parts.push(enc.encode('\x01token\x00' + (a.token || '') + '\x00'));
+
+  // Optional \x01schinese\x00<displayNameCN>\x00
+  if (a.displayNameCN) {
+    parts.push(enc.encode('\x01schinese\x00' + a.displayNameCN + '\x00'));
+  }
+
+  // \x08\x00
+  parts.push(new Uint8Array([0x08, 0x00]));
+
+  // desc\x00\x01english\x00<desc>\x00\x01token\x00<descToken>\x00
+  parts.push(enc.encode('desc\x00\x01english\x00' + (a.description || '') + '\x00\x01token\x00' + (a.descToken || '') + '\x00'));
+
+  // Optional \x01schinese\x00<descriptionCN>\x00
+  if (a.descriptionCN) {
+    parts.push(enc.encode('\x01schinese\x00' + a.descriptionCN + '\x00'));
+  }
+
+  // \x08\x00\x02
+  parts.push(new Uint8Array([0x08, 0x00, 0x02]));
+
+  // hidden\x00<flag>
+  parts.push(enc.encode('hidden\x00'));
+  parts.push(new Uint8Array([a.hidden ? 0x01 : 0x00]));
+  parts.push(new Uint8Array([0x00, 0x00, 0x00, 0x01]));
+
+  // icon\x00<path>\x00
+  parts.push(enc.encode('icon\x00' + (a.icon || '') + '\x00'));
+
+  // \x01
+  parts.push(new Uint8Array([0x01]));
+
+  // icon_gray\x00<path>\x00
+  parts.push(enc.encode('icon_gray\x00' + (a.iconGray || '') + '\x00'));
+
+  // \x08\x00\x08\x00<ordinal>\x00\x01
+  parts.push(enc.encode('\x08\x00\x08\x00' + ordinalStr + '\x00\x01'));
+
+  return concatArrays(parts);
+}
+
+function rebuildFile(origBuf, achievements) {
+  const u8 = new Uint8Array(origBuf);
+  const positions = findAllRecordPositions(u8);
+  if (positions.length === 0) throw new Error('No records found');
+
+  // Header
+  const header = u8.slice(0, positions[0]);
+
+  // Separators between records
+  const separators = [];
+  for (let i = 1; i < positions.length; i++) {
+    const prevStart = positions[i-1];
+    const nextStart = positions[i];
+    let tailPos = -1;
+    for (let j = Math.max(prevStart, nextStart - 20); j < nextStart - 5; j++) {
+      if (u8[j] === 0x08 && u8[j+1] === 0x00 && u8[j+2] === 0x08 && u8[j+3] === 0x00) {
+        tailPos = j;
+      }
+    }
+    if (tailPos >= 0) {
+      let ordEnd = tailPos + 4;
+      while (ordEnd < nextStart && u8[ordEnd] >= 0x30 && u8[ordEnd] <= 0x39) ordEnd++;
+      const recEnd = Math.min(ordEnd + 2, nextStart);
+      separators.push(u8.slice(recEnd, nextStart));
+    } else {
+      // Fallback: search from prevStart for 0800
+      for (let j = prevStart; j < nextStart - 5; j++) {
+        if (u8[j] === 0x08 && u8[j+1] === 0x00 && u8[j+2] === 0x08 && u8[j+3] === 0x00) {
+          tailPos = j; break;
+        }
+      }
+      if (tailPos >= 0) {
+        let ordEnd = tailPos + 4;
+        while (ordEnd < nextStart && u8[ordEnd] >= 0x30 && u8[ordEnd] <= 0x39) ordEnd++;
+        const recEnd = Math.min(ordEnd + 2, nextStart);
+        separators.push(u8.slice(recEnd, nextStart));
+      } else {
+        separators.push(new Uint8Array(0));
+      }
+    }
+  }
+
+  // Footer
+  let footer = new Uint8Array(0);
+  const lastPos = positions[positions.length - 1];
+  let lastTailPos = -1;
+  for (let j = Math.max(lastPos, u8.length - 30); j < u8.length - 5; j++) {
+    if (u8[j] === 0x08 && u8[j+1] === 0x00 && u8[j+2] === 0x08 && u8[j+3] === 0x00) {
+      lastTailPos = j;
+    }
+  }
+  if (lastTailPos >= 0) {
+    let ordEnd = lastTailPos + 4;
+    while (ordEnd < u8.length && u8[ordEnd] >= 0x30 && u8[ordEnd] <= 0x39) ordEnd++;
+    footer = u8.slice(ordEnd + 2);
+  }
+
+  // Rebuild
+  const parts = [header];
+  for (let i = 0; i < achievements.length; i++) {
+    parts.push(serializeRecord(achievements[i], String(achievements[i].ordinal)));
+    if (i < separators.length) parts.push(separators[i]);
+  }
+  parts.push(footer);
+
+  return concatArrays(parts);
+}
+
+// ============================================================
+// UI State
+// ============================================================
+
+let originalData = null;       // raw Uint8Array of loaded file
+let allAchievements = [];      // current (possibly modified) data
+let originalSnapshot = [];     // pristine copy for "reset"
+let filtered = [];
+let sortCol = 'ordinal';
+let sortAsc = true;
+let selectedIdx = -1;         // index in allAchievements
+let detailIdx = -1;           // index for detail panel
+let dirtyFlags = new Set();   // indices of modified achievements
+
+const $ = id => document.getElementById(id);
+const tbody = $('tableBody');
+const thead = $('tableHead');
+
+// ============================================================
+// File IO
+// ============================================================
+
+$('fileInput').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (file) loadFile(file);
+});
+
+const dropZone = $('dropZone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file && file.name.endsWith('.bin')) loadFile(file);
+  else toast('请选择 .bin 文件', 'error');
+});
+
+function loadFile(file) {
+  $('statFile').textContent = file.name;
+  $('statSize').textContent = formatSize(file.size);
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      originalData = new Uint8Array(e.target.result);
+      allAchievements = parseAchievements(e.target.result);
+      originalSnapshot = allAchievements.map(a => ({...a}));
+      dirtyFlags.clear();
+      $('saveBtn').disabled = false;
+      $('resetBtn').disabled = true;
+      applyFilters();
+      toast('加载成功: ' + allAchievements.length + ' 条成就', 'success');
+    } catch (err) {
+      tbody.innerHTML = '<tr><td colspan="9"><div class="no-data">解析失败: ' + esc(err.message) + '</div></td></tr>';
+      toast('解析失败: ' + err.message, 'error');
+    }
+  };
+  reader.onerror = () => toast('读取文件失败', 'error');
+  reader.readAsArrayBuffer(file);
+}
+
+// ============================================================
+// Save (rebuild + download)
+// ============================================================
+
+$('saveBtn').addEventListener('click', () => {
+  if (!originalData || allAchievements.length === 0) return;
+  try {
+    const rebuilt = rebuildFile(originalData, allAchievements);
+    const blob = new Blob([rebuilt], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const fileName = $('statFile').textContent.replace(/\.bin$/, '') || 'achievements';
+    a.href = url;
+    a.download = fileName + '_modified.bin';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('保存成功! 共 ' + allAchievements.length + ' 条记录', 'success');
+  } catch (err) {
+    toast('保存失败: ' + err.message, 'error');
+  }
+});
+
+// ============================================================
+// Reset
+// ============================================================
+
+$('resetBtn').addEventListener('click', () => {
+  if (dirtyFlags.size === 0) return;
+  allAchievements = originalSnapshot.map(a => ({...a}));
+  dirtyFlags.clear();
+  $('resetBtn').disabled = true;
+  applyFilters();
+  toast('已重置所有修改', 'success');
+});
+
+// ============================================================
+// Filter & Sort & Render
+// ============================================================
+
+function applyFilters() {
+  const q = $('searchInput').value.toLowerCase().trim();
+  const showHidden = $('showHidden').checked;
+  const showNoIcon = $('showNoIcon').checked;
+  const showModified = $('showModified').checked;
+
+  filtered = allAchievements.filter((a, i) => {
+    if (!showHidden && a.hidden) return false;
+    if (!showNoIcon && a.icon) return false;
+    if (!showModified && dirtyFlags.has(i)) return false;
+    if (q) {
+      const inName = a.displayName.toLowerCase().includes(q);
+      const inNameCN = a.displayNameCN && a.displayNameCN.toLowerCase().includes(q);
+      const inToken = a.token.toLowerCase().includes(q);
+      const inDesc = a.description.toLowerCase().includes(q);
+      const inDescCN = a.descriptionCN && a.descriptionCN.toLowerCase().includes(q);
+      if (!inName && !inNameCN && !inToken && !inDesc && !inDescCN) return false;
+    }
+    return true;
+  });
+
+  filtered.sort((a, b) => {
+    let va, vb;
+    switch (sortCol) {
+      case 'ordinal': va = a.ordinal; vb = b.ordinal; break;
+      case 'displayName': va = (a.displayName||'').toLowerCase(); vb = (b.displayName||'').toLowerCase(); break;
+      case 'displayNameCN': va = (a.displayNameCN||'').toLowerCase(); vb = (b.displayNameCN||'').toLowerCase(); break;
+      case 'token': va = (a.token||'').toLowerCase(); vb = (b.token||'').toLowerCase(); break;
+      case 'description': va = (a.description||'').toLowerCase(); vb = (b.description||'').toLowerCase(); break;
+      case 'descriptionCN': va = (a.descriptionCN||'').toLowerCase(); vb = (b.descriptionCN||'').toLowerCase(); break;
+      case 'hidden': va = a.hidden ? 1 : 0; vb = b.hidden ? 1 : 0; break;
+      case 'icon': va = (a.icon||'').toLowerCase(); vb = (b.icon||'').toLowerCase(); break;
+      case 'iconGray': va = (a.iconGray||'').toLowerCase(); vb = (b.iconGray||'').toLowerCase(); break;
+      default: va = a.ordinal; vb = b.ordinal;
+    }
+    if (typeof va === 'string') return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+    return sortAsc ? va - vb : vb - va;
+  });
+
+  updateStats();
+  renderTable();
+}
+
+function updateStats() {
+  const total = allAchievements.length;
+  const hidden = allAchievements.filter(a => a.hidden).length;
+  const visible = total - hidden;
+  $('statTotal').textContent = total;
+  $('statHidden').textContent = hidden;
+  $('statVisible').textContent = visible;
+  $('statModified').textContent = dirtyFlags.size;
+  $('resetBtn').disabled = dirtyFlags.size === 0;
+}
+
+function renderTable() {
+  const groupBy = $('groupByOrdinal').checked;
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = allAchievements.length === 0
+      ? '<tr><td colspan="9"><div class="no-data">选择一个 .bin 文件来查看和编辑成就数据</div></td></tr>'
+      : '<tr><td colspan="9"><div class="empty-filter">没有匹配的记录</div></td></tr>';
+    return;
+  }
+
+  let html = '';
+  if (groupBy) {
+    const groups = {};
+    filtered.forEach(a => {
+      const g = Math.floor((a.ordinal - 1) / 10) * 10 + 1;
+      const key = g + '-' + (g + 9);
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(a);
+    });
+    for (const [range, items] of Object.entries(groups)) {
+      html += '<tr style="background:var(--surface);font-weight:600"><td colspan="9" style="padding:4px 8px;font-size:11px;color:var(--accent)">#' + range + '</td></tr>';
+      html += items.map(a => rowHtml(a)).join('');
+    }
+  } else {
+    html = filtered.map(a => rowHtml(a)).join('');
+  }
+
+  tbody.innerHTML = html;
+
+  // Click handlers - find index in allAchievements
+  tbody.querySelectorAll('tr.data-row').forEach((tr, idx) => {
+    const a = filtered[idx];
+    const realIdx = allAchievements.indexOf(a);
+    tr.style.cursor = 'pointer';
+    tr.addEventListener('click', () => openDetail(realIdx));
+  });
+}
+
+function rowHtml(a) {
+  const realIdx = allAchievements.indexOf(a);
+  const isModified = dirtyFlags.has(realIdx);
+  const cls = 'data-row' + (a.hidden ? ' hidden-row' : '') + (isModified ? ' edited' : '');
+  const badges = (a.hidden ? '<span class="hidden-badge">隐藏</span> ' : '') + (isModified ? '<span class="modified-badge">已修改</span>' : '');
+  return '<tr class="' + cls + '">'
+    + '<td class="ordinal">' + a.ordinal + '</td>'
+    + '<td>' + esc(a.displayName) + ' ' + badges + '</td>'
+    + '<td>' + esc(a.displayNameCN) + '</td>'
+    + '<td style="font-size:11px;color:var(--text-dim)">' + esc(a.token) + '</td>'
+    + '<td class="desc-cell">' + esc(a.description) + '</td>'
+    + '<td class="desc-cell">' + esc(a.descriptionCN) + '</td>'
+    + '<td>' + (a.hidden ? '&#10003;' : '') + '</td>'
+    + '<td class="icon-cell" style="font-size:10px;color:var(--text-dim);max-width:180px;overflow:hidden;text-overflow:ellipsis">' + esc(a.icon) + '</td>'
+    + '<td class="icon-cell" style="font-size:10px;color:var(--text-dim);max-width:180px;overflow:hidden;text-overflow:ellipsis">' + esc(a.iconGray) + '</td>'
+    + '</tr>';
+}
+
+function esc(s) { if (!s) return ''; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/1048576).toFixed(1) + ' MB';
+}
+
+// ============================================================
+// Column Sorting
+// ============================================================
+
+thead.addEventListener('click', e => {
+  const th = e.target.closest('th');
+  if (!th) return;
+  const col = th.dataset.col;
+  if (!col) return;
+  if (sortCol === col) sortAsc = !sortAsc;
+  else { sortCol = col; sortAsc = true; }
+  thead.querySelectorAll('th').forEach(t => t.classList.remove('sorted'));
+  th.classList.add('sorted');
+  applyFilters();
+});
+
+// ============================================================
+// Filter event listeners
+// ============================================================
+
+['searchInput','showHidden','showNoIcon','showModified','groupByOrdinal'].forEach(id => {
+  const el = $(id);
+  if (el) el.addEventListener(id === 'searchInput' ? 'input' : 'change', applyFilters);
+});
+
+// ============================================================
+// Detail / Edit Panel
+// ============================================================
+
+function openDetail(idx) {
+  if (idx < 0 || idx >= allAchievements.length) return;
+  detailIdx = idx;
+  const a = allAchievements[idx];
+  $('detailName').textContent = a.displayName || '(unnamed)';
+  $('detailOrdinal').textContent = a.ordinal;
+  $('editDisplayName').value = a.displayName || '';
+  $('editDisplayNameCN').value = a.displayNameCN || '';
+  $('editToken').value = a.token || '';
+  $('editDescription').value = a.description || '';
+  $('editDescriptionCN').value = a.descriptionCN || '';
+  $('editDescToken').value = a.descToken || '';
+  $('editHidden').checked = a.hidden;
+  $('editIcon').value = a.icon || '';
+  $('editIconGray').value = a.iconGray || '';
+  $('detailOverlay').classList.add('open');
+}
+
+function closeDetail() {
+  $('detailOverlay').classList.remove('open');
+  detailIdx = -1;
+}
+
+function applyEdit() {
+  if (detailIdx < 0) return;
+  const a = allAchievements[detailIdx];
+  const orig = originalSnapshot[detailIdx];
+  a.displayName = $('editDisplayName').value;
+  a.displayNameCN = $('editDisplayNameCN').value;
+  a.token = $('editToken').value;
+  a.description = $('editDescription').value;
+  a.descriptionCN = $('editDescriptionCN').value;
+  a.descToken = $('editDescToken').value;
+  a.hidden = $('editHidden').checked;
+  a.icon = $('editIcon').value;
+  a.iconGray = $('editIconGray').value;
+
+  // Check if actually modified vs original
+  const changed = a.displayName !== orig.displayName || a.displayNameCN !== orig.displayNameCN ||
+    a.token !== orig.token ||
+    a.description !== orig.description || a.descriptionCN !== orig.descriptionCN ||
+    a.descToken !== orig.descToken ||
+    a.hidden !== orig.hidden || a.icon !== orig.icon || a.iconGray !== orig.iconGray;
+  if (changed) dirtyFlags.add(detailIdx);
+  else dirtyFlags.delete(detailIdx);
+
+  applyFilters();
+
+  // Update detail header
+  $('detailName').textContent = a.displayName || '(unnamed)';
+  toast('已更新 #' + a.ordinal, 'success');
+}
+
+function nextDetail() {
+  if (detailIdx < 0) return;
+  let next = detailIdx + 1;
+  if (next >= allAchievements.length) next = 0;
+  openDetail(next);
+}
+
+function prevDetail() {
+  if (detailIdx < 0) return;
+  let prev = detailIdx - 1;
+  if (prev < 0) prev = allAchievements.length - 1;
+  openDetail(prev);
+}
+
+$('detailApply').addEventListener('click', applyEdit);
+$('detailPrev').addEventListener('click', prevDetail);
+$('detailNext').addEventListener('click', nextDetail);
+$('detailClose').addEventListener('click', closeDetail);
+$('detailOverlay').addEventListener('click', e => {
+  if (e.target === $('detailOverlay')) closeDetail();
+});
+
+// Keyboard shortcuts in detail panel
+$('detailOverlay').addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeDetail();
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); applyEdit(); }
+});
+
+// ============================================================
+// Export CSV
+// ============================================================
+
+$('exportBtn').addEventListener('click', () => {
+  if (allAchievements.length === 0) return;
+  const rows = [['#','Name','NameCN','Token','Description','DescriptionCN','DescToken','Hidden','Icon','IconGray']];
+  allAchievements.forEach(a => {
+    rows.push([a.ordinal, a.displayName, a.displayNameCN, a.token, a.description, a.descriptionCN, a.descToken, a.hidden, a.icon, a.iconGray]);
+  });
+  const csv = rows.map(r =>
+    r.map(v => {
+      const s = String(v != null ? v : '');
+      return s.includes(',') || s.includes('"') || s.includes('\n')
+        ? '"' + s.replace(/"/g, '""') + '"' : s;
+    }).join(',')
+  ).join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'achievements.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+// ============================================================
+// Toast
+// ============================================================
+
+function toast(msg, type) {
+  const el = $('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (type ? ' ' + type : '');
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>
