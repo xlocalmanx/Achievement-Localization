@@ -124,6 +124,8 @@
   .btn-primary:hover { background: var(--accent-hover); }
   .btn-green { background: var(--green); color: #fff; }
   .btn-green:hover { background: #4cda64; }
+  .btn-danger { background: var(--red); color: #fff; }
+  .btn-danger:hover { background: #ff6b63; }
   .btn:disabled { opacity: .4; cursor: not-allowed; }
 
   .table-wrap {
@@ -263,6 +265,111 @@
   .toast.success { border-color: var(--green); }
   .toast.error { border-color: var(--red); }
 
+  /* Language bar */
+  .lang-bar {
+    display: flex;
+    gap: 6px;
+    padding: 8px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+  }
+  .lang-bar .label {
+    font-size: 11px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    margin-right: 4px;
+  }
+  .lang-btn {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 3px 10px;
+    font-size: 11px;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all .2s;
+    white-space: nowrap;
+  }
+  .lang-btn:hover {
+    border-color: var(--accent);
+    color: var(--text);
+  }
+  .lang-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .lang-btn.add-lang {
+    border-style: dashed;
+    color: var(--accent);
+  }
+  .lang-btn .rm-lang {
+    margin-left: 5px;
+    opacity: .5;
+    font-size: 10px;
+  }
+  .lang-btn .rm-lang:hover { opacity: 1; }
+  .lang-custom-input {
+    background: var(--bg);
+    border: 1px dashed var(--border);
+    border-radius: 4px;
+    padding: 2px 8px;
+    color: var(--text);
+    font-size: 11px;
+    width: 90px;
+    outline: none;
+  }
+  .lang-custom-input:focus { border-color: var(--accent); }
+
+  /* Column selector modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.65);
+    z-index: 150;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    max-width: 440px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  .modal-panel h3 {
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+  .col-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-bottom: 14px;
+  }
+  .col-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    padding: 3px 0;
+  }
+  .col-item input[type="checkbox"] { accent-color: var(--accent); }
+  .modal-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .modal-buttons .btn { flex: 1; min-width: 60px; padding: 7px; font-size: 13px; }
+
   @media (max-width: 640px) {
     .header { padding: 10px 12px; }
     .stats { padding: 6px 12px; font-size: 11px; gap: 10px; }
@@ -299,26 +406,20 @@
   <label><input type="checkbox" id="showModified" checked> 已修改</label>
   <label><input type="checkbox" id="groupByOrdinal"> 分组</label>
   <button class="btn" id="exportBtn">&#128196; 导出 CSV</button>
+<button class="btn" id="importBtn">&#128194; 导入 CSV</button>
+<input type="file" id="importFileInput" accept=".csv" style="display:none">
   <button class="btn" id="resetBtn" disabled>&#8634; 重置</button>
+</div>
+
+<div class="lang-bar" id="langBar">
+  <span class="label">语言:</span>
 </div>
 
 <div class="table-wrap" id="tableWrap">
   <table>
-    <thead id="tableHead">
-      <tr>
-        <th data-col="ordinal"># <span class="sort-arrow">&#9660;</span></th>
-        <th data-col="displayName">名称 <span class="sort-arrow">&#9660;</span></th>
-        <th data-col="displayNameCN">中文名 <span class="sort-arrow">&#9660;</span></th>
-        <th data-col="token">Token <span class="sort-arrow">&#9660;</span></th>
-        <th data-col="description">描述 <span class="sort-arrow">&#9660;</span></th>
-        <th data-col="descriptionCN">中文描述 <span class="sort-arrow">&#9660;</span></th>
-        <th data-col="hidden" style="width:60px">隐藏 <span class="sort-arrow">&#9660;</span></th>
-        <th data-col="icon">图标 <span class="sort-arrow">&#9660;</span></th>
-        <th data-col="iconGray">灰图标 <span class="sort-arrow">&#9660;</span></th>
-      </tr>
-    </thead>
+    <thead id="tableHead"></thead>
     <tbody id="tableBody">
-      <tr><td colspan="9"><div class="no-data">选择一个 .bin 文件来查看和编辑成就数据</div></td></tr>
+      <tr><td colspan="7"><div class="no-data">选择一个 .bin 文件来查看和编辑成就数据</div></td></tr>
     </tbody>
   </table>
 </div>
@@ -332,10 +433,7 @@
       <div class="label">显示名称</div>
       <input id="editDisplayName" data-field="displayName">
     </div>
-    <div class="edit-field">
-      <div class="label">中文名称</div>
-      <input id="editDisplayNameCN" data-field="displayNameCN">
-    </div>
+    <div id="langEditFields"></div>
     <div class="edit-field">
       <div class="label">Token</div>
       <input id="editToken" data-field="token">
@@ -343,10 +441,6 @@
     <div class="edit-field">
       <div class="label">描述</div>
       <textarea id="editDescription" data-field="description" rows="2"></textarea>
-    </div>
-    <div class="edit-field">
-      <div class="label">中文描述</div>
-      <textarea id="editDescriptionCN" data-field="descriptionCN" rows="2"></textarea>
     </div>
     <div class="edit-field">
       <div class="label">描述 Token</div>
@@ -373,11 +467,120 @@
   </div>
 </div>
 
+<!-- Column selector modal -->
+<div class="modal-overlay" id="colModal">
+  <div class="modal-panel">
+    <h3>选择导出列</h3>
+    <div class="col-list" id="colList"></div>
+    <div class="modal-buttons">
+      <button class="btn btn-primary" id="colExport">导出选中列</button>
+      <button class="btn" id="colCancel">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- CSV import preview -->
+<div class="modal-overlay" id="importModal">
+  <div class="modal-panel" style="text-align:center">
+    <h3>导入 CSV</h3>
+    <p id="importMsg" style="font-size:13px;margin:12px 0;color:var(--text-dim)"></p>
+    <div class="modal-buttons">
+      <button class="btn btn-primary" id="importConfirm">确认导入</button>
+      <button class="btn" id="importCancel">取消</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
 // ============================================================
-// Binary Parser & Serializer
+// Constants
+// ============================================================
+
+const COMMON_LANGUAGES = [
+  { code: 'schinese', label: '简体中文' },
+  { code: 'tchinese', label: '繁體中文' },
+  { code: 'japanese', label: '日本語' },
+  { code: 'korean', label: '한국어' },
+  { code: 'french', label: 'Français' },
+  { code: 'german', label: 'Deutsch' },
+  { code: 'spanish', label: 'Español' },
+  { code: 'portuguese', label: 'Português' },
+  { code: 'russian', label: 'Русский' },
+  { code: 'italian', label: 'Italiano' },
+  { code: 'dutch', label: 'Nederlands' },
+  { code: 'polish', label: 'Polski' },
+  { code: 'brazilian', label: 'Português (Brasil)' },
+  { code: 'latam', label: 'Español (LATAM)' },
+  { code: 'turkish', label: 'Türkçe' },
+  { code: 'ukrainian', label: 'Українська' },
+  { code: 'thai', label: 'ไทย' },
+  { code: 'vietnamese', label: 'Tiếng Việt' },
+  { code: 'arabic', label: 'العربية' },
+];
+
+const $ = id => document.getElementById(id);
+const tbody = $('tableBody');
+const thead = $('tableHead');
+
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/1048576).toFixed(1) + ' MB';
+}
+
+// ============================================================
+// Binary Helpers
+// ============================================================
+
+function skipToNull(buf, pos) {
+  while (pos < buf.length && buf[pos] !== 0) pos++;
+  return pos;
+}
+
+function skipNonStructural(buf, pos) {
+  while (pos < buf.length) {
+    if (buf[pos] === 0x08) { pos++; continue; }
+    if (buf[pos] === 0x00) { pos++; continue; }
+    if (buf[pos] >= 0x30 && buf[pos] <= 0x39) {
+      while (pos < buf.length && buf[pos] >= 0x30 && buf[pos] <= 0x39) pos++;
+      if (buf[pos] === 0x00) pos++;
+      if (buf[pos] === 0x01) pos++;
+      continue;
+    }
+    break;
+  }
+  return pos;
+}
+
+function matchAt(buf, pos, pattern) {
+  if (pos + pattern.length > buf.length) return false;
+  for (let i = 0; i < pattern.length; i++) {
+    if (buf[pos + i] !== pattern[i]) return false;
+  }
+  return true;
+}
+
+function decode(buf, start, end) {
+  return new TextDecoder().decode(buf.slice(start, end));
+}
+
+function concatArrays(arrays) {
+  let len = 0;
+  for (const a of arrays) len += a.length;
+  const r = new Uint8Array(len);
+  let off = 0;
+  for (const a of arrays) { r.set(a, off); off += a.length; }
+  return r;
+}
+
+// ============================================================
+// Parser — dynamically collects all language fields
 // ============================================================
 
 function parseAchievements(data) {
@@ -392,11 +595,9 @@ function parseAchievements(data) {
 
   let consecutiveFails = 0;
   while (pos < buf.length && consecutiveFails < 3) {
-    // Skip non-structural bytes
     pos = skipNonStructural(buf, pos);
     if (pos >= buf.length) break;
 
-    // Check for "name\x00"
     if (!matchAt(buf, pos, [0x6E, 0x61, 0x6D, 0x65, 0x00])) {
       consecutiveFails++; pos++; continue;
     }
@@ -412,10 +613,12 @@ function parseAchievements(data) {
     if (buf[pos] === 0x00) pos++;
     if (buf[pos] === 0x00) pos++;
 
-    let displayName = '', displayNameCN = '', token = '', description = '', descriptionCN = '', descToken = '';
+    let displayName = '', token = '', description = '', descToken = '';
     let hidden = false, icon = '', iconGray = '';
+    const langDisplay = {};
+    const langDesc = {};
 
-    // display field
+    // --- Display section ---
     if (buf[pos] === 0x64) { // 'd'
       pos += 7; // "display"
       if (buf[pos] === 0x00) pos++;
@@ -423,76 +626,83 @@ function parseAchievements(data) {
       if (buf[pos] === 0x6E) pos += 4; // "name"
       if (buf[pos] === 0x00) pos++;
       if (buf[pos] === 0x01) pos++;
-      pos = skipToNull(buf, pos) + 1;
+      pos = skipToNull(buf, pos) + 1; // skip "english\x00"
       const nameStart = pos;
       pos = skipToNull(buf, pos) + 1;
       displayName = decode(buf, nameStart, pos - 1);
     }
 
-    if (buf[pos] === 0x01) pos++;
-
-    // token field
-    if (buf[pos] === 0x74) { // 't'
-      pos += 5; // "token"
-      if (buf[pos] === 0x00) pos++;
-      const tokStart = pos;
-      pos = skipToNull(buf, pos) + 1;
-      token = decode(buf, tokStart, pos - 1);
-    }
-
-    // Check for schinese displayName
-    if (pos + 9 < buf.length && buf[pos] === 0x01 && buf[pos+1] === 0x73 && buf[pos+2] === 0x63 && buf[pos+3] === 0x68 && buf[pos+4] === 0x69 && buf[pos+5] === 0x6e && buf[pos+6] === 0x65 && buf[pos+7] === 0x73 && buf[pos+8] === 0x65) {
-      pos += 10;
-      const cns = pos; pos = skipToNull(buf, pos) + 1;
-      displayNameCN = decode(buf, cns, pos - 1);
+    // Parse token + language sub-fields in display section
+    while (pos < buf.length && buf[pos] === 0x01) {
+      pos++; // skip \x01
+      const tagStart = pos;
+      pos = skipToNull(buf, pos);
+      if (pos >= buf.length) break;
+      const tag = decode(buf, tagStart, pos);
+      pos++; // skip \x00 after tag
+      if (pos >= buf.length) break;
+      const valStart = pos;
+      pos = skipToNull(buf, pos);
+      const val = decode(buf, valStart, pos);
+      pos++; // skip \x00 after value
+      if (tag === 'token') token = val;
+      else langDisplay[tag] = val;
     }
 
     if (buf[pos] === 0x08) pos++;
     if (buf[pos] === 0x00) pos++;
 
-    // desc field
+    // --- Description section ---
     if (buf[pos] === 0x64 && buf[pos+1] === 0x65 && buf[pos+2] === 0x73 && buf[pos+3] === 0x63) {
-      pos += 4;
+      pos += 4; // "desc"
       if (buf[pos] === 0x00) pos++;
       if (buf[pos] === 0x01) pos++;
-      pos = skipToNull(buf, pos) + 1;
+      pos = skipToNull(buf, pos) + 1; // skip "english\x00"
       const descStart = pos;
       pos = skipToNull(buf, pos) + 1;
       description = decode(buf, descStart, pos - 1);
-      if (buf[pos] === 0x01) pos++;
-      if (buf[pos] === 0x74) { // 't'
-        pos += 5;
-        if (buf[pos] === 0x00) pos++;
-        const dtStart = pos;
-        pos = skipToNull(buf, pos) + 1;
-        descToken = decode(buf, dtStart, pos - 1);
-      }
+    }
 
-      // Check for schinese description
-      if (pos + 9 < buf.length && buf[pos] === 0x01 && buf[pos+1] === 0x73 && buf[pos+2] === 0x63 && buf[pos+3] === 0x68 && buf[pos+4] === 0x69 && buf[pos+5] === 0x6e && buf[pos+6] === 0x65 && buf[pos+7] === 0x73 && buf[pos+8] === 0x65) {
-        pos += 10;
-        const cds = pos; pos = skipToNull(buf, pos) + 1;
-        descriptionCN = decode(buf, cds, pos - 1);
-      }
+    // Parse descToken + language sub-fields in desc section
+    while (pos < buf.length && buf[pos] === 0x01) {
+      pos++; // skip \x01
+      const tagStart = pos;
+      pos = skipToNull(buf, pos);
+      if (pos >= buf.length) break;
+      const tag = decode(buf, tagStart, pos);
+      pos++; // skip \x00 after tag
+      if (pos >= buf.length) break;
+      const valStart = pos;
+      pos = skipToNull(buf, pos);
+      const val = decode(buf, valStart, pos);
+      pos++; // skip \x00 after value
+      if (tag === 'token') descToken = val;
+      else langDesc[tag] = val;
     }
 
     if (buf[pos] === 0x08) pos++;
-    if (buf[pos] === 0x00) pos++;
-    if (buf[pos] === 0x02) pos++;
+    if (buf[pos] === 0x00 || buf[pos] === 0x01 || buf[pos] === 0x02) pos++;
 
     // hidden field
     if (buf[pos] === 0x68 && buf[pos+1] === 0x69) {
       pos += 6; // "hidden"
       if (buf[pos] === 0x00) pos++;
-      hidden = buf[pos] !== 0x00;
+      hidden = buf[pos] === 0x01 || buf[pos] === 0x31; // \x01 or ASCII '1'
       pos++;
-      // Skip to icon/icon_gray
       while (pos < buf.length && !(buf[pos] === 0x69 && (buf[pos+4] === 0x00 || buf[pos+4] === 0x5F))) {
         pos++;
       }
     }
 
-    // icon
+    // icon / icon_gray (order varies across records)
+    while (pos < buf.length && buf[pos] === 0x01) pos++;
+    if (matchAt(buf, pos, [0x69, 0x63, 0x6F, 0x6E, 0x5F, 0x67, 0x72, 0x61, 0x79, 0x00])) {
+      pos += 10;
+      const igStart = pos;
+      pos = skipToNull(buf, pos) + 1;
+      iconGray = decode(buf, igStart, pos - 1);
+      if (buf[pos] === 0x01) pos++;
+    }
     if (matchAt(buf, pos, [0x69, 0x63, 0x6F, 0x6E, 0x00])) {
       pos += 5;
       const iconStart = pos;
@@ -500,8 +710,6 @@ function parseAchievements(data) {
       icon = decode(buf, iconStart, pos - 1);
       if (buf[pos] === 0x01) pos++;
     }
-
-    // icon_gray
     if (matchAt(buf, pos, [0x69, 0x63, 0x6F, 0x6E, 0x5F, 0x67, 0x72, 0x61, 0x79, 0x00])) {
       pos += 10;
       const igStart = pos;
@@ -509,7 +717,7 @@ function parseAchievements(data) {
       iconGray = decode(buf, igStart, pos - 1);
     }
 
-    achievements.push({ ordinal, displayName, displayNameCN, token, description, descriptionCN, descToken, hidden, icon, iconGray });
+    achievements.push({ ordinal, displayName, token, description, descToken, hidden, icon, iconGray, langDisplay, langDesc });
 
     // Advance to next record
     let found = false;
@@ -559,70 +767,28 @@ function findFirstRecord(buf, start) {
 }
 
 function findNextRecord(buf, start) {
-  for (let i = start; i < buf.length - 6; i++) {
-    if (matchAt(buf, i, [0x6E, 0x61, 0x6D, 0x65, 0x00]) && buf[i+5] >= 0x30 && buf[i+5] <= 0x39) return i;
-  }
-  return -1;
+  return findFirstRecord(buf, start);
 }
 
-function findAllRecordPositions(buf) {
-  const positions = [];
-  let pos = 0;
-  while (pos < buf.length) {
-    const idx = findNextRecord(buf, pos);
-    if (idx === -1) break;
-    positions.push(idx);
-    pos = idx + 1;
-  }
-  return positions;
-}
-
-function skipNonStructural(buf, pos) {
-  while (pos < buf.length) {
-    if (buf[pos] === 0x08) { pos++; continue; }
-    if (buf[pos] === 0x00) { pos++; continue; }
-    if (buf[pos] >= 0x30 && buf[pos] <= 0x39) {
-      while (pos < buf.length && buf[pos] >= 0x30 && buf[pos] <= 0x39) pos++;
-      if (buf[pos] === 0x00) pos++;
-      if (buf[pos] === 0x01) pos++;
-      continue;
+function findSectionMarkers(u8) {
+  const markers = [];
+  for (let i = 0; i <= u8.length - 20; i++) {
+    if (u8[i] !== 0x08 || u8[i+1] !== 0x08 || u8[i+2] !== 0x08 || u8[i+3] !== 0x01) continue;
+    let match = true;
+    const typeStr = 'type\x00ACHIEVEMENTS\x00';
+    for (let j = 0; j < typeStr.length; j++) {
+      if (u8[i + 4 + j] !== typeStr.charCodeAt(j)) { match = false; break; }
     }
-    break;
+    if (match) markers.push(i);
   }
-  return pos;
-}
-
-function matchAt(buf, pos, pattern) {
-  if (pos + pattern.length > buf.length) return false;
-  for (let i = 0; i < pattern.length; i++) {
-    if (buf[pos + i] !== pattern[i]) return false;
-  }
-  return true;
-}
-
-function skipToNull(buf, pos) {
-  while (pos < buf.length && buf[pos] !== 0) pos++;
-  return pos;
-}
-
-function decode(buf, start, end) {
-  return new TextDecoder().decode(buf.slice(start, end));
+  return markers;
 }
 
 // ============================================================
-// Serializer
+// Serializer — dynamically writes all language fields
 // ============================================================
 
-function concatArrays(arrays) {
-  let len = 0;
-  for (const a of arrays) len += a.length;
-  const r = new Uint8Array(len);
-  let off = 0;
-  for (const a of arrays) { r.set(a, off); off += a.length; }
-  return r;
-}
-
-function serializeRecord(a, ordinalStr) {
+function serializeRecord(a, ordinalStr, tailPos, includeTail) {
   const enc = new TextEncoder();
   const parts = [];
 
@@ -632,12 +798,14 @@ function serializeRecord(a, ordinalStr) {
   // display\x00\x00name\x00\x01english\x00<name>\x00
   parts.push(enc.encode('display\x00\x00name\x00\x01english\x00' + (a.displayName || '') + '\x00'));
 
-  // \x01token\x00<token>\x00
+  // token sub-field
   parts.push(enc.encode('\x01token\x00' + (a.token || '') + '\x00'));
 
-  // Optional \x01schinese\x00<displayNameCN>\x00
-  if (a.displayNameCN) {
-    parts.push(enc.encode('\x01schinese\x00' + a.displayNameCN + '\x00'));
+  // All display language sub-fields
+  if (a.langDisplay) {
+    for (const [lang, val] of Object.entries(a.langDisplay)) {
+      if (val) parts.push(enc.encode('\x01' + lang + '\x00' + val + '\x00'));
+    }
   }
 
   // \x08\x00
@@ -646,18 +814,18 @@ function serializeRecord(a, ordinalStr) {
   // desc\x00\x01english\x00<desc>\x00\x01token\x00<descToken>\x00
   parts.push(enc.encode('desc\x00\x01english\x00' + (a.description || '') + '\x00\x01token\x00' + (a.descToken || '') + '\x00'));
 
-  // Optional \x01schinese\x00<descriptionCN>\x00
-  if (a.descriptionCN) {
-    parts.push(enc.encode('\x01schinese\x00' + a.descriptionCN + '\x00'));
+  // All description language sub-fields
+  if (a.langDesc) {
+    for (const [lang, val] of Object.entries(a.langDesc)) {
+      if (val) parts.push(enc.encode('\x01' + lang + '\x00' + val + '\x00'));
+    }
   }
 
-  // \x08\x00\x02
-  parts.push(new Uint8Array([0x08, 0x00, 0x02]));
+  // \x08\x02 (separator before hidden field)
+  parts.push(new Uint8Array([0x08, 0x02]));
 
-  // hidden\x00<flag>
-  parts.push(enc.encode('hidden\x00'));
-  parts.push(new Uint8Array([a.hidden ? 0x01 : 0x00]));
-  parts.push(new Uint8Array([0x00, 0x00, 0x00, 0x01]));
+  // hidden\x00<flag>\x00\x00\x00\x01 (binary flag, matching Steam's original format)
+  parts.push(new Uint8Array([0x68, 0x69, 0x64, 0x64, 0x65, 0x6E, 0x00, a.hidden ? 0x01 : 0x00, 0x00, 0x00, 0x00, 0x01]));
 
   // icon\x00<path>\x00
   parts.push(enc.encode('icon\x00' + (a.icon || '') + '\x00'));
@@ -668,76 +836,97 @@ function serializeRecord(a, ordinalStr) {
   // icon_gray\x00<path>\x00
   parts.push(enc.encode('icon_gray\x00' + (a.iconGray || '') + '\x00'));
 
-  // \x08\x00\x08\x00<ordinal>\x00\x01
-  parts.push(enc.encode('\x08\x00\x08\x00' + ordinalStr + '\x00\x01'));
+  // Tail: \x08\x08\x00<position>\x00\x01 (omitted for last record per section)
+  if (includeTail !== false) {
+    parts.push(enc.encode('\x08\x08\x00' + tailPos + '\x00\x01'));
+  }
 
   return concatArrays(parts);
 }
 
+
+
 function rebuildFile(origBuf, achievements) {
   const u8 = new Uint8Array(origBuf);
-  const positions = findAllRecordPositions(u8);
-  if (positions.length === 0) throw new Error('No records found');
+  const markers = findSectionMarkers(u8);
+  if (markers.length < 21) throw new Error('Expected 21 section markers, found ' + markers.length);
 
-  // Header
-  const header = u8.slice(0, positions[0]);
+  // Find all record positions in original file
+  const allRecords = [];
+  let pos = 0;
+  while (pos < u8.length) {
+    const idx = findFirstRecord(u8, pos);
+    if (idx === -1) break;
+    let op = idx + 5;
+    let ord = '';
+    while (op < u8.length && u8[op] >= 0x30 && u8[op] <= 0x39) { ord += String.fromCharCode(u8[op]); op++; }
+    allRecords.push({ pos: idx, ordinal: parseInt(ord, 10) });
+    pos = idx + 1;
+  }
 
-  // Separators between records
-  const separators = [];
-  for (let i = 1; i < positions.length; i++) {
-    const prevStart = positions[i-1];
-    const nextStart = positions[i];
-    let tailPos = -1;
-    for (let j = Math.max(prevStart, nextStart - 20); j < nextStart - 5; j++) {
-      if (u8[j] === 0x08 && u8[j+1] === 0x00 && u8[j+2] === 0x08 && u8[j+3] === 0x00) {
-        tailPos = j;
-      }
-    }
-    if (tailPos >= 0) {
-      let ordEnd = tailPos + 4;
-      while (ordEnd < nextStart && u8[ordEnd] >= 0x30 && u8[ordEnd] <= 0x39) ordEnd++;
-      const recEnd = Math.min(ordEnd + 2, nextStart);
-      separators.push(u8.slice(recEnd, nextStart));
+  // Group records into pre-section (before marker[0]) and sections 0-19
+  const preRecords = [];
+  const sectRecords = [];
+  for (let si = 0; si < 20; si++) sectRecords.push([]);
+
+  for (const r of allRecords) {
+    if (r.pos < markers[0]) {
+      preRecords.push(r);
     } else {
-      // Fallback: search from prevStart for 0800
-      for (let j = prevStart; j < nextStart - 5; j++) {
-        if (u8[j] === 0x08 && u8[j+1] === 0x00 && u8[j+2] === 0x08 && u8[j+3] === 0x00) {
-          tailPos = j; break;
+      for (let si = 0; si < 20; si++) {
+        if (r.pos >= markers[si] && r.pos < markers[si + 1]) {
+          sectRecords[si].push(r);
+          break;
         }
       }
-      if (tailPos >= 0) {
-        let ordEnd = tailPos + 4;
-        while (ordEnd < nextStart && u8[ordEnd] >= 0x30 && u8[ordEnd] <= 0x39) ordEnd++;
-        const recEnd = Math.min(ordEnd + 2, nextStart);
-        separators.push(u8.slice(recEnd, nextStart));
+    }
+  }
+
+  const achMap = {};
+  for (const a of achievements) achMap[a.ordinal] = a;
+
+  const parts = [];
+
+  // === PRE-SECTION: header + records before first ACHIEVEMENTS marker ===
+  if (preRecords.length > 0) {
+    parts.push(u8.slice(0, preRecords[0].pos));
+    for (let i = 0; i < preRecords.length; i++) {
+      const a = achMap[preRecords[i].ordinal];
+      const isLast = i === preRecords.length - 1;
+      const tailPos = i + 1; // 1-based position within pre-section group
+      if (a) {
+        parts.push(serializeRecord(a, String(preRecords[i].ordinal), String(tailPos), !isLast));
       } else {
-        separators.push(new Uint8Array(0));
+        const nextStart = i + 1 < preRecords.length ? preRecords[i + 1].pos : markers[0];
+        parts.push(u8.slice(preRecords[i].pos, nextStart));
       }
     }
   }
 
-  // Footer
-  let footer = new Uint8Array(0);
-  const lastPos = positions[positions.length - 1];
-  let lastTailPos = -1;
-  for (let j = Math.max(lastPos, u8.length - 30); j < u8.length - 5; j++) {
-    if (u8[j] === 0x08 && u8[j+1] === 0x00 && u8[j+2] === 0x08 && u8[j+3] === 0x00) {
-      lastTailPos = j;
+  // === CONTENT SECTIONS 0-19 (each with ACHIEVEMENTS envelope) ===
+  for (let si = 0; si < 20; si++) {
+    const recs = sectRecords[si];
+    if (recs.length === 0) {
+      parts.push(u8.slice(markers[si], markers[si + 1]));
+      continue;
+    }
+    // Section prefix: marker → first record
+    parts.push(u8.slice(markers[si], recs[0].pos));
+    for (let i = 0; i < recs.length; i++) {
+      const a = achMap[recs[i].ordinal];
+      const isLast = i === recs.length - 1;
+      const tailPos = i + 1; // 1-based position within section
+      if (a) {
+        parts.push(serializeRecord(a, String(recs[i].ordinal), String(tailPos), !isLast));
+      } else {
+        const nextStart = i + 1 < recs.length ? recs[i + 1].pos : markers[si + 1];
+        parts.push(u8.slice(recs[i].pos, nextStart));
+      }
     }
   }
-  if (lastTailPos >= 0) {
-    let ordEnd = lastTailPos + 4;
-    while (ordEnd < u8.length && u8[ordEnd] >= 0x30 && u8[ordEnd] <= 0x39) ordEnd++;
-    footer = u8.slice(ordEnd + 2);
-  }
 
-  // Rebuild
-  const parts = [header];
-  for (let i = 0; i < achievements.length; i++) {
-    parts.push(serializeRecord(achievements[i], String(achievements[i].ordinal)));
-    if (i < separators.length) parts.push(separators[i]);
-  }
-  parts.push(footer);
+  // === FOOTER (section 20, verbatim — no version normalization) ===
+  parts.push(u8.slice(markers[20]));
 
   return concatArrays(parts);
 }
@@ -746,19 +935,164 @@ function rebuildFile(origBuf, achievements) {
 // UI State
 // ============================================================
 
-let originalData = null;       // raw Uint8Array of loaded file
-let allAchievements = [];      // current (possibly modified) data
-let originalSnapshot = [];     // pristine copy for "reset"
+let originalData = null;
+let allAchievements = [];
+let originalSnapshot = [];
 let filtered = [];
 let sortCol = 'ordinal';
 let sortAsc = true;
-let selectedIdx = -1;         // index in allAchievements
-let detailIdx = -1;           // index for detail panel
-let dirtyFlags = new Set();   // indices of modified achievements
+let detailIdx = -1;
+let dirtyFlags = new Set();
+let activeLanguages = ['schinese'];
 
-const $ = id => document.getElementById(id);
-const tbody = $('tableBody');
-const thead = $('tableHead');
+// ============================================================
+// Language Management
+// ============================================================
+
+function renderLangBar() {
+  const bar = $('langBar');
+  if (!bar) return;
+  let html = '<span class="label">语言:</span>';
+  for (const lang of COMMON_LANGUAGES) {
+    const active = activeLanguages.includes(lang.code);
+    html += '<button class="lang-btn' + (active ? ' active' : '') + '" data-lang="' + lang.code + '">' + esc(lang.label) + '</button>';
+  }
+  html += '<input class="lang-custom-input" id="customLangInput" placeholder="自定义" maxlength="20">';
+  html += '<button class="lang-btn add-lang" id="addCustomLang">+</button>';
+  bar.innerHTML = html;
+
+  bar.querySelectorAll('.lang-btn[data-lang]').forEach(btn => {
+    btn.addEventListener('click', () => toggleLanguage(btn.dataset.lang));
+  });
+  const addBtn = $('addCustomLang');
+  const langInput = $('customLangInput');
+  if (addBtn) addBtn.addEventListener('click', () => {
+    const input = $('customLangInput');
+    if (!input) return;
+    const code = input.value.trim().toLowerCase();
+    if (code && /^[a-z_]+$/.test(code) && !activeLanguages.includes(code)) {
+      toggleLanguage(code);
+      input.value = '';
+    } else if (activeLanguages.includes(code)) {
+      toast('语言 ' + code + ' 已存在', 'error');
+    } else {
+      toast('请输入有效的语言代码（字母和下划线）', 'error');
+    }
+  });
+  if (langInput) langInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      const btn = $('addCustomLang');
+      if (btn) btn.click();
+    }
+  });
+}
+
+function toggleLanguage(code) {
+  const idx = activeLanguages.indexOf(code);
+  if (idx >= 0) {
+    activeLanguages.splice(idx, 1);
+  } else {
+    activeLanguages.push(code);
+    // Initialize empty entries for all achievements
+    for (const a of allAchievements) {
+      if (a.langDisplay[code] === undefined) a.langDisplay[code] = '';
+      if (a.langDesc[code] === undefined) a.langDesc[code] = '';
+    }
+  }
+  buildTableHead();
+  renderLangBar();
+  renderLangEditFields();
+  if (detailIdx >= 0) openDetail(detailIdx);
+  applyFilters();
+}
+
+function detectLanguages() {
+  const langSet = new Set();
+  for (const a of allAchievements) {
+    for (const l of Object.keys(a.langDisplay || {})) langSet.add(l);
+    for (const l of Object.keys(a.langDesc || {})) langSet.add(l);
+  }
+  if (langSet.size > 0) {
+    activeLanguages = Array.from(langSet);
+  } else {
+    // Default
+    activeLanguages = ['schinese'];
+  }
+}
+
+// ============================================================
+// Column / Sort helpers
+// ============================================================
+
+function getColumns() {
+  const cols = [
+    { key: 'ordinal', label: '#' },
+    { key: 'displayName', label: '名称' },
+    { key: 'token', label: 'Token' },
+    { key: 'description', label: '描述' },
+    { key: 'hidden', label: '隐藏', width: '60px' },
+    { key: 'icon', label: '图标' },
+    { key: 'iconGray', label: '灰图标' },
+  ];
+  for (const lang of activeLanguages) {
+    const info = COMMON_LANGUAGES.find(l => l.code === lang);
+    const lbl = info ? info.label : lang;
+    cols.push({ key: '__lang_disp_' + lang, label: lbl + ' 名称' });
+    cols.push({ key: '__lang_desc_' + lang, label: lbl + ' 描述' });
+  }
+  return cols;
+}
+
+function getSortValue(a, col) {
+  if (col === 'ordinal') return a.ordinal;
+  if (col === 'hidden') return a.hidden ? 1 : 0;
+  if (col.startsWith('__lang_disp_')) {
+    const lang = col.slice('__lang_disp_'.length);
+    return (a.langDisplay[lang] || '').toLowerCase();
+  }
+  if (col.startsWith('__lang_desc_')) {
+    const lang = col.slice('__lang_desc_'.length);
+    return (a.langDesc[lang] || '').toLowerCase();
+  }
+  return (a[col] || '').toLowerCase();
+}
+
+function buildTableHead() {
+  const cols = getColumns();
+  let html = '<tr>';
+  for (const c of cols) {
+    const cls = sortCol === c.key ? ' sorted' : '';
+    const arrow = sortCol === c.key ? (sortAsc ? '&#9650;' : '&#9660;') : '&#9660;';
+    const width = c.width ? ' style="width:' + c.width + '"' : '';
+    html += '<th' + width + ' data-col="' + c.key + '" class="' + cls + '">' + esc(c.label) + '<span class="sort-arrow">' + arrow + '</span></th>';
+  }
+  html += '</tr>';
+  thead.innerHTML = html;
+}
+
+// ============================================================
+// Is-modified helper
+// ============================================================
+
+function isAchievementDirty(a, orig) {
+  if (a.displayName !== orig.displayName) return true;
+  if (a.token !== orig.token) return true;
+  if (a.description !== orig.description) return true;
+  if (a.descToken !== orig.descToken) return true;
+  if (a.hidden !== orig.hidden) return true;
+  if (a.icon !== orig.icon) return true;
+  if (a.iconGray !== orig.iconGray) return true;
+  // Compare langDisplay
+  const allDispKeys = new Set([...Object.keys(a.langDisplay || {}), ...Object.keys(orig.langDisplay || {})]);
+  for (const k of allDispKeys) {
+    if ((a.langDisplay[k] || '') !== (orig.langDisplay[k] || '')) return true;
+  }
+  const allDescKeys = new Set([...Object.keys(a.langDesc || {}), ...Object.keys(orig.langDesc || {})]);
+  for (const k of allDescKeys) {
+    if ((a.langDesc[k] || '') !== (orig.langDesc[k] || '')) return true;
+  }
+  return false;
+}
 
 // ============================================================
 // File IO
@@ -788,14 +1122,22 @@ function loadFile(file) {
     try {
       originalData = new Uint8Array(e.target.result);
       allAchievements = parseAchievements(e.target.result);
-      originalSnapshot = allAchievements.map(a => ({...a}));
+      originalSnapshot = allAchievements.map(a => ({
+        ...a,
+        langDisplay: {...(a.langDisplay || {})},
+        langDesc: {...(a.langDesc || {})}
+      }));
       dirtyFlags.clear();
+      detectLanguages();
+      buildTableHead();
+      renderLangBar();
+      renderLangEditFields();
       $('saveBtn').disabled = false;
       $('resetBtn').disabled = true;
       applyFilters();
       toast('加载成功: ' + allAchievements.length + ' 条成就', 'success');
     } catch (err) {
-      tbody.innerHTML = '<tr><td colspan="9"><div class="no-data">解析失败: ' + esc(err.message) + '</div></td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7"><div class="no-data">解析失败: ' + esc(err.message) + '</div></td></tr>';
       toast('解析失败: ' + err.message, 'error');
     }
   };
@@ -831,7 +1173,11 @@ $('saveBtn').addEventListener('click', () => {
 
 $('resetBtn').addEventListener('click', () => {
   if (dirtyFlags.size === 0) return;
-  allAchievements = originalSnapshot.map(a => ({...a}));
+  allAchievements = originalSnapshot.map(a => ({
+    ...a,
+    langDisplay: {...(a.langDisplay || {})},
+    langDesc: {...(a.langDesc || {})}
+  }));
   dirtyFlags.clear();
   $('resetBtn').disabled = true;
   applyFilters();
@@ -841,6 +1187,8 @@ $('resetBtn').addEventListener('click', () => {
 // ============================================================
 // Filter & Sort & Render
 // ============================================================
+
+const colspanForEmpty = () => 7 + activeLanguages.length * 2;
 
 function applyFilters() {
   const q = $('searchInput').value.toLowerCase().trim();
@@ -853,32 +1201,19 @@ function applyFilters() {
     if (!showNoIcon && a.icon) return false;
     if (!showModified && dirtyFlags.has(i)) return false;
     if (q) {
-      const inName = a.displayName.toLowerCase().includes(q);
-      const inNameCN = a.displayNameCN && a.displayNameCN.toLowerCase().includes(q);
-      const inToken = a.token.toLowerCase().includes(q);
-      const inDesc = a.description.toLowerCase().includes(q);
-      const inDescCN = a.descriptionCN && a.descriptionCN.toLowerCase().includes(q);
-      if (!inName && !inNameCN && !inToken && !inDesc && !inDescCN) return false;
+      const fields = [a.displayName, a.token, a.description];
+      for (const v of Object.values(a.langDisplay || {})) fields.push(v);
+      for (const v of Object.values(a.langDesc || {})) fields.push(v);
+      if (!fields.some(f => f && f.toLowerCase().includes(q))) return false;
     }
     return true;
   });
 
   filtered.sort((a, b) => {
-    let va, vb;
-    switch (sortCol) {
-      case 'ordinal': va = a.ordinal; vb = b.ordinal; break;
-      case 'displayName': va = (a.displayName||'').toLowerCase(); vb = (b.displayName||'').toLowerCase(); break;
-      case 'displayNameCN': va = (a.displayNameCN||'').toLowerCase(); vb = (b.displayNameCN||'').toLowerCase(); break;
-      case 'token': va = (a.token||'').toLowerCase(); vb = (b.token||'').toLowerCase(); break;
-      case 'description': va = (a.description||'').toLowerCase(); vb = (b.description||'').toLowerCase(); break;
-      case 'descriptionCN': va = (a.descriptionCN||'').toLowerCase(); vb = (b.descriptionCN||'').toLowerCase(); break;
-      case 'hidden': va = a.hidden ? 1 : 0; vb = b.hidden ? 1 : 0; break;
-      case 'icon': va = (a.icon||'').toLowerCase(); vb = (b.icon||'').toLowerCase(); break;
-      case 'iconGray': va = (a.iconGray||'').toLowerCase(); vb = (b.iconGray||'').toLowerCase(); break;
-      default: va = a.ordinal; vb = b.ordinal;
-    }
-    if (typeof va === 'string') return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
-    return sortAsc ? va - vb : vb - va;
+    const va = getSortValue(a, sortCol);
+    const vb = getSortValue(b, sortCol);
+    if (typeof va === 'number') return sortAsc ? va - vb : vb - va;
+    return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
   });
 
   updateStats();
@@ -898,11 +1233,12 @@ function updateStats() {
 
 function renderTable() {
   const groupBy = $('groupByOrdinal').checked;
+  const cols = colspanForEmpty();
 
   if (filtered.length === 0) {
     tbody.innerHTML = allAchievements.length === 0
-      ? '<tr><td colspan="9"><div class="no-data">选择一个 .bin 文件来查看和编辑成就数据</div></td></tr>'
-      : '<tr><td colspan="9"><div class="empty-filter">没有匹配的记录</div></td></tr>';
+      ? '<tr><td colspan="' + cols + '"><div class="no-data">选择一个 .bin 文件来查看和编辑成就数据</div></td></tr>'
+      : '<tr><td colspan="' + cols + '"><div class="empty-filter">没有匹配的记录</div></td></tr>';
     return;
   }
 
@@ -916,7 +1252,7 @@ function renderTable() {
       groups[key].push(a);
     });
     for (const [range, items] of Object.entries(groups)) {
-      html += '<tr style="background:var(--surface);font-weight:600"><td colspan="9" style="padding:4px 8px;font-size:11px;color:var(--accent)">#' + range + '</td></tr>';
+      html += '<tr style="background:var(--surface);font-weight:600"><td colspan="' + cols + '" style="padding:4px 8px;font-size:11px;color:var(--accent)">#' + range + '</td></tr>';
       html += items.map(a => rowHtml(a)).join('');
     }
   } else {
@@ -925,7 +1261,6 @@ function renderTable() {
 
   tbody.innerHTML = html;
 
-  // Click handlers - find index in allAchievements
   tbody.querySelectorAll('tr.data-row').forEach((tr, idx) => {
     const a = filtered[idx];
     const realIdx = allAchievements.indexOf(a);
@@ -939,39 +1274,34 @@ function rowHtml(a) {
   const isModified = dirtyFlags.has(realIdx);
   const cls = 'data-row' + (a.hidden ? ' hidden-row' : '') + (isModified ? ' edited' : '');
   const badges = (a.hidden ? '<span class="hidden-badge">隐藏</span> ' : '') + (isModified ? '<span class="modified-badge">已修改</span>' : '');
-  return '<tr class="' + cls + '">'
-    + '<td class="ordinal">' + a.ordinal + '</td>'
-    + '<td>' + esc(a.displayName) + ' ' + badges + '</td>'
-    + '<td>' + esc(a.displayNameCN) + '</td>'
-    + '<td style="font-size:11px;color:var(--text-dim)">' + esc(a.token) + '</td>'
-    + '<td class="desc-cell">' + esc(a.description) + '</td>'
-    + '<td class="desc-cell">' + esc(a.descriptionCN) + '</td>'
-    + '<td>' + (a.hidden ? '&#10003;' : '') + '</td>'
-    + '<td class="icon-cell" style="font-size:10px;color:var(--text-dim);max-width:180px;overflow:hidden;text-overflow:ellipsis">' + esc(a.icon) + '</td>'
-    + '<td class="icon-cell" style="font-size:10px;color:var(--text-dim);max-width:180px;overflow:hidden;text-overflow:ellipsis">' + esc(a.iconGray) + '</td>'
-    + '</tr>';
-}
+  let cells = '<td class="ordinal">' + a.ordinal + '</td>';
+  cells += '<td>' + esc(a.displayName) + ' ' + badges + '</td>';
+  cells += '<td style="font-size:11px;color:var(--text-dim)">' + esc(a.token) + '</td>';
+  cells += '<td class="desc-cell">' + esc(a.description) + '</td>';
+  cells += '<td>' + (a.hidden ? '&#10003;' : '') + '</td>';
+  cells += '<td class="icon-cell" style="font-size:10px;color:var(--text-dim);max-width:180px;overflow:hidden;text-overflow:ellipsis">' + esc(a.icon) + '</td>';
+  cells += '<td class="icon-cell" style="font-size:10px;color:var(--text-dim);max-width:180px;overflow:hidden;text-overflow:ellipsis">' + esc(a.iconGray) + '</td>';
 
-function esc(s) { if (!s) return ''; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function formatSize(bytes) {
-  if (bytes < 1024) return bytes + ' B';
-  if (bytes < 1048576) return (bytes/1024).toFixed(1) + ' KB';
-  return (bytes/1048576).toFixed(1) + ' MB';
+  for (const lang of activeLanguages) {
+    cells += '<td>' + esc(a.langDisplay[lang]) + '</td>';
+    cells += '<td class="desc-cell">' + esc(a.langDesc[lang]) + '</td>';
+  }
+
+  return '<tr class="' + cls + '">' + cells + '</tr>';
 }
 
 // ============================================================
 // Column Sorting
 // ============================================================
 
-thead.addEventListener('click', e => {
+$('tableHead').addEventListener('click', e => {
   const th = e.target.closest('th');
   if (!th) return;
   const col = th.dataset.col;
   if (!col) return;
   if (sortCol === col) sortAsc = !sortAsc;
   else { sortCol = col; sortAsc = true; }
-  thead.querySelectorAll('th').forEach(t => t.classList.remove('sorted'));
-  th.classList.add('sorted');
+  buildTableHead(); // rebuild arrows
   applyFilters();
 });
 
@@ -988,6 +1318,19 @@ thead.addEventListener('click', e => {
 // Detail / Edit Panel
 // ============================================================
 
+function renderLangEditFields() {
+  const container = $('langEditFields');
+  if (!container) return;
+  let html = '';
+  for (const lang of activeLanguages) {
+    const info = COMMON_LANGUAGES.find(l => l.code === lang);
+    const label = info ? info.label : lang;
+    html += '<div class="edit-field"><div class="label">' + esc(label) + ' 名称</div><input id="editLangDisp_' + lang + '" data-lang-disp="' + lang + '"></div>';
+    html += '<div class="edit-field"><div class="label">' + esc(label) + ' 描述</div><textarea id="editLangDesc_' + lang + '" data-lang-desc="' + lang + '" rows="2"></textarea></div>';
+  }
+  container.innerHTML = html;
+}
+
 function openDetail(idx) {
   if (idx < 0 || idx >= allAchievements.length) return;
   detailIdx = idx;
@@ -995,14 +1338,20 @@ function openDetail(idx) {
   $('detailName').textContent = a.displayName || '(unnamed)';
   $('detailOrdinal').textContent = a.ordinal;
   $('editDisplayName').value = a.displayName || '';
-  $('editDisplayNameCN').value = a.displayNameCN || '';
   $('editToken').value = a.token || '';
   $('editDescription').value = a.description || '';
-  $('editDescriptionCN').value = a.descriptionCN || '';
   $('editDescToken').value = a.descToken || '';
   $('editHidden').checked = a.hidden;
   $('editIcon').value = a.icon || '';
   $('editIconGray').value = a.iconGray || '';
+
+  for (const lang of activeLanguages) {
+    const dispEl = document.getElementById('editLangDisp_' + lang);
+    const descEl = document.getElementById('editLangDesc_' + lang);
+    if (dispEl) dispEl.value = a.langDisplay[lang] || '';
+    if (descEl) descEl.value = a.langDesc[lang] || '';
+  }
+
   $('detailOverlay').classList.add('open');
 }
 
@@ -1016,27 +1365,25 @@ function applyEdit() {
   const a = allAchievements[detailIdx];
   const orig = originalSnapshot[detailIdx];
   a.displayName = $('editDisplayName').value;
-  a.displayNameCN = $('editDisplayNameCN').value;
   a.token = $('editToken').value;
   a.description = $('editDescription').value;
-  a.descriptionCN = $('editDescriptionCN').value;
   a.descToken = $('editDescToken').value;
   a.hidden = $('editHidden').checked;
   a.icon = $('editIcon').value;
   a.iconGray = $('editIconGray').value;
 
-  // Check if actually modified vs original
-  const changed = a.displayName !== orig.displayName || a.displayNameCN !== orig.displayNameCN ||
-    a.token !== orig.token ||
-    a.description !== orig.description || a.descriptionCN !== orig.descriptionCN ||
-    a.descToken !== orig.descToken ||
-    a.hidden !== orig.hidden || a.icon !== orig.icon || a.iconGray !== orig.iconGray;
+  for (const lang of activeLanguages) {
+    const dispEl = document.getElementById('editLangDisp_' + lang);
+    const descEl = document.getElementById('editLangDesc_' + lang);
+    if (dispEl) a.langDisplay[lang] = dispEl.value;
+    if (descEl) a.langDesc[lang] = descEl.value;
+  }
+
+  const changed = isAchievementDirty(a, orig);
   if (changed) dirtyFlags.add(detailIdx);
   else dirtyFlags.delete(detailIdx);
 
   applyFilters();
-
-  // Update detail header
   $('detailName').textContent = a.displayName || '(unnamed)';
   toast('已更新 #' + a.ordinal, 'success');
 }
@@ -1063,29 +1410,77 @@ $('detailOverlay').addEventListener('click', e => {
   if (e.target === $('detailOverlay')) closeDetail();
 });
 
-// Keyboard shortcuts in detail panel
 $('detailOverlay').addEventListener('keydown', e => {
   if (e.key === 'Escape') closeDetail();
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); applyEdit(); }
 });
 
 // ============================================================
-// Export CSV
+// CSV Export with Column Selection
 // ============================================================
+
+function getAllExportColumns() {
+  const cols = [
+    { key: 'ordinal',      label: '#' },
+    { key: 'displayName',  label: '名称' },
+    { key: 'token',        label: 'Token' },
+    { key: 'description',  label: '描述' },
+    { key: 'descToken',    label: '描述Token' },
+    { key: 'hidden',       label: '隐藏' },
+    { key: 'icon',         label: '图标' },
+    { key: 'iconGray',     label: '灰图标' },
+  ];
+  for (const lang of activeLanguages) {
+    const info = COMMON_LANGUAGES.find(l => l.code === lang);
+    const lbl = info ? info.label : lang;
+    cols.push({ key: '__lang_disp_' + lang, label: lbl + '_名称' });
+    cols.push({ key: '__lang_desc_' + lang, label: lbl + '_描述' });
+  }
+  return cols;
+}
+
+function getCellValue(a, key) {
+  if (key.startsWith('__lang_disp_')) return a.langDisplay[key.slice('__lang_disp_'.length)] || '';
+  if (key.startsWith('__lang_desc_')) return a.langDesc[key.slice('__lang_desc_'.length)] || '';
+  if (key === 'hidden') return a.hidden ? 'true' : 'false';
+  return a[key] != null ? String(a[key]) : '';
+}
+
+function buildColumnSelector() {
+  const cols = getAllExportColumns();
+  $('colList').innerHTML = cols.map(c =>
+    '<label class="col-item"><input type="checkbox" value="' + c.key + '" checked> ' + esc(c.label) + '</label>'
+  ).join('');
+  $('colModal').classList.add('open');
+}
 
 $('exportBtn').addEventListener('click', () => {
   if (allAchievements.length === 0) return;
-  const rows = [['#','Name','NameCN','Token','Description','DescriptionCN','DescToken','Hidden','Icon','IconGray']];
-  allAchievements.forEach(a => {
-    rows.push([a.ordinal, a.displayName, a.displayNameCN, a.token, a.description, a.descriptionCN, a.descToken, a.hidden, a.icon, a.iconGray]);
-  });
-  const csv = rows.map(r =>
-    r.map(v => {
-      const s = String(v != null ? v : '');
-      return s.includes(',') || s.includes('"') || s.includes('\n')
-        ? '"' + s.replace(/"/g, '""') + '"' : s;
-    }).join(',')
-  ).join('\n');
+  buildColumnSelector();
+});
+
+$('colCancel').addEventListener('click', () => {
+  $('colModal').classList.remove('open');
+});
+
+$('colExport').addEventListener('click', () => {
+  const checked = [...$('colList').querySelectorAll('input:checked')].map(i => i.value);
+  if (checked.length === 0) { toast('请至少选择一列', 'error'); return; }
+  const cols = getAllExportColumns().filter(c => checked.includes(c.key));
+  doExportCSV(cols);
+  $('colModal').classList.remove('open');
+});
+
+function doExportCSV(cols) {
+  const headerRow = cols.map(c => c.label);
+  const dataRows = allAchievements.map(a =>
+    cols.map(c => {
+      const v = getCellValue(a, c.key);
+      return v.includes(',') || v.includes('"') || v.includes('\n')
+        ? '"' + v.replace(/"/g, '""') + '"' : v;
+    })
+  );
+  const csv = [headerRow, ...dataRows].map(r => r.join(',')).join('\n');
   const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1093,7 +1488,178 @@ $('exportBtn').addEventListener('click', () => {
   a.download = 'achievements.csv';
   a.click();
   URL.revokeObjectURL(url);
+  toast('已导出 ' + allAchievements.length + ' 条记录', 'success');
+}
+
+// ============================================================
+// CSV Import
+// ============================================================
+
+$('importBtn').addEventListener('click', () => {
+  $('importFileInput').click();
 });
+
+$('importFileInput').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (file) importCSV(file);
+  e.target.value = '';
+});
+
+function parseCSV(text) {
+  // Strip BOM
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  // Normalize line endings
+  text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const rows = [];
+  let currentRow = [];
+  let field = '';
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (i + 1 < text.length && text[i+1] === '"') {
+          field += '"'; i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        field += c;
+      }
+    } else {
+      if (c === '"') {
+        inQuotes = true;
+      } else if (c === ',') {
+        currentRow.push(field);
+        field = '';
+      } else if (c === '\n') {
+        currentRow.push(field);
+        field = '';
+        rows.push(currentRow);
+        currentRow = [];
+      } else {
+        field += c;
+      }
+    }
+  }
+  // Last field and row
+  currentRow.push(field);
+  if (currentRow.length > 1 || currentRow[0] !== '') rows.push(currentRow);
+  return rows;
+}
+
+function importCSV(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const rows = parseCSV(e.target.result);
+      if (rows.length < 2) { toast('CSV 文件格式错误: 没有数据行', 'error'); return; }
+
+      const headers = rows[0];
+      const dataRows = rows.slice(1);
+
+      // Build column mapping to achievement fields
+      // Column keys: ordinal, displayName, token, description, descToken, hidden, icon, iconGray
+      //              __lang_disp_<code>, __lang_desc_<code>
+      const colDefs = getAllExportColumns();
+      const colMap = []; // { key, label }
+      for (let i = 0; i < headers.length; i++) {
+        const h = headers[i].trim();
+        // Try exact label match first, then fallback to key pattern
+        const def = colDefs.find(c => c.label === h);
+        if (def) {
+          colMap.push({ idx: i, key: def.key });
+        }
+      }
+
+      if (colMap.length === 0) {
+        toast('无法匹配 CSV 列与成就字段', 'error');
+        return;
+      }
+
+      // Find ordinal column index
+      const ordinalCol = colMap.find(c => c.key === 'ordinal');
+      if (!ordinalCol) { toast('CSV 缺少 # 列（ordinal），无法匹配成就', 'error'); return; }
+
+      // Build import data
+      let updateCount = 0;
+      const updates = [];
+      for (const row of dataRows) {
+        const ordStr = (row[ordinalCol.idx] || '').trim();
+        if (!ordStr) continue;
+        const ord = parseInt(ordStr, 10);
+        if (isNaN(ord)) continue;
+        const rowData = {};
+        for (const cm of colMap) {
+          rowData[cm.key] = (row[cm.idx] || '').trim();
+        }
+        updates.push({ ordinal: ord, data: rowData });
+      }
+
+      if (updates.length === 0) { toast('CSV 中没有可导入的有效数据', 'error'); return; }
+
+      // Count how many will actually match existing achievements
+      let matchCount = 0;
+      for (const upd of updates) {
+        if (allAchievements.some(a => a.ordinal === upd.ordinal)) matchCount++;
+      }
+
+      // Show preview modal
+      const msg = '发现 ' + colMap.length + ' 列，' + updates.length + ' 行数据。\n其中 ' + matchCount + ' 条将匹配到现有成就。';
+      $('importMsg').textContent = msg;
+      $('importModal').classList.add('open');
+
+      // Use onclick (not addEventListener) to avoid accumulation
+      $('importConfirm').onclick = () => {
+        $('importModal').classList.remove('open');
+        $('importConfirm').onclick = null;
+        $('importCancel').onclick = null;
+
+        let applied = 0;
+        for (const upd of updates) {
+          const a = allAchievements.find(x => x.ordinal === upd.ordinal);
+          if (!a) continue;
+          const origIdx = allAchievements.indexOf(a);
+          const orig = originalSnapshot[origIdx];
+
+          for (const cm of colMap) {
+            const key = cm.key;
+            const val = upd.data[key];
+            if (key === 'ordinal') continue;
+            if (key === 'hidden') {
+              a.hidden = val === 'true' || val === '1' || val === '✓';
+            } else if (key.startsWith('__lang_disp_')) {
+              const lang = key.slice('__lang_disp_'.length);
+              a.langDisplay[lang] = val;
+            } else if (key.startsWith('__lang_desc_')) {
+              const lang = key.slice('__lang_desc_'.length);
+              a.langDesc[lang] = val;
+            } else if (key in a) {
+              a[key] = val;
+            }
+          }
+
+          if (isAchievementDirty(a, orig)) dirtyFlags.add(origIdx);
+          applied++;
+        }
+
+        applyFilters();
+        toast('已导入 ' + applied + ' 条记录', 'success');
+      };
+
+      $('importCancel').onclick = () => {
+        $('importModal').classList.remove('open');
+        $('importConfirm').onclick = null;
+        $('importCancel').onclick = null;
+      };
+
+    } catch (err) {
+      toast('导入失败: ' + err.message, 'error');
+    }
+  };
+  reader.onerror = () => toast('读取文件失败', 'error');
+  reader.readAsText(file);
+}
 
 // ============================================================
 // Toast
@@ -1106,6 +1672,13 @@ function toast(msg, type) {
   clearTimeout(el._timer);
   el._timer = setTimeout(() => el.classList.remove('show'), 2500);
 }
+
+// Initial render
+try {
+  buildTableHead();
+  renderLangBar();
+  renderLangEditFields();
+} catch (_) { /* initial render errors handled on subsequent loads */ }
 </script>
 </body>
 </html>

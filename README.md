@@ -8,10 +8,16 @@ Steam 成就 .bin 文件的查看和编辑工具。
 |------|------|
 | `edit_bin.js` | 命令行工具 — 解析、查询、修改、保存 .bin 文件 |
 | `binviewer.html` | 网页 UI — 可视化浏览和编辑成就数据 |
+| `patch_bin.js` | 命令行工具 — 从已汉化的 .bin 文件中提取中文并注入原始文件 |
+| `patch_from_csv.js` | 命令行工具 — 从 CSV 批量导入中文到原始 .bin 文件 |
 
 ## .bin 格式要点
 
-Steam 成就 .bin 是多语言格式，每条记录中包含不同语言字段：
+Steam 成就 .bin 是多段结构，每条记录中包含不同语言字段。
+
+**段结构（ACHIEVEMENTS）：** 例如以撒的结合包含 21 个段标记（Section 0-19 为内容段，Section 20 为尾部）。前 32 条记录位于第一个段标记之前（前段区），其余记录分布在 20 个内容段中。保存时必须保留此结构，否则 Steam 无法正确解析。
+
+**记录结构：**
 
 ```
 display → english → 英文名
@@ -83,6 +89,70 @@ node edit_bin.js stats.bin set 1 descriptionCN "你解锁了抹大拉"
 
 成就文件在 Steam 安装目录的 `~/appcache/stats/` 中。
 
+## patch_bin.js — 合并中文
+
+从已汉化的 .bin 文件中提取中文字段，手术式注入原始 .bin 文件（不改变原始结构）。（写这个是因为测试的时候发现汉化后的bin无法使用，又懒得提取文本了，就从失败的bin文件提取算了）
+
+```bash
+node patch_bin.js <原始.bin> <已汉化.bin> <输出.bin>
+```
+
+参数说明：
+
+| 参数 | 说明 |
+|------|------|
+| 第 1 个参数 | 原始无中文的 .bin 文件（默认 `原始UserGameStatsSchema_250900.bin`） |
+| 第 2 个参数 | 已包含中文的 .bin 文件（默认 `成功UserGameStatsSchema_250900_chinese.bin`） |
+| 第 3 个参数 | 输出文件（默认 `UserGameStatsSchema_250900.bin`） |
+
+示例：
+
+```bash
+node patch_bin.js 原始UserGameStatsSchema_250900.bin 成功UserGameStatsSchema_250900_chinese.bin UserGameStatsSchema_250900.bin
+```
+
+工作原理：
+1. 扫描原始文件找到每条记录的 `schinese` 插入位置（`display` 和 `desc` 段的 `token` 之后）
+2. 从已汉化文件中提取中文字段（`displayNameCN` / `descriptionCN`）
+3. 在原始文件中插入 `\x01schinese\x00<值>\x00`，完成修补
+
+## patch_from_csv.js — 从 CSV 批量导入
+
+将 CSV 文件中的中文翻译批量注入原始 .bin 文件（手术式修补，不改变原始结构）。
+
+```bash
+node patch_from_csv.js <csv文件> <原始.bin> <输出.bin>
+```
+
+参数说明：
+
+| 参数 | 说明 |
+|------|------|
+| 第 1 个参数 | CSV 文件（默认 `achievements.csv`） |
+| 第 2 个参数 | 原始 .bin 文件（默认 `原始UserGameStatsSchema_250900.bin`） |
+| 第 3 个参数 | 输出文件（默认 `UserGameStatsSchema_250900.bin`） |
+
+CSV 格式（首行为表头）：
+
+```csv
+ordinal,displayNameCN,descriptionCN
+1,抹大拉,你解锁了"抹大拉"
+2,该隐,你解锁了"该隐"
+```
+
+示例：
+
+```bash
+node patch_from_csv.js achievements.csv 原始UserGameStatsSchema_250900.bin UserGameStatsSchema_250900.bin
+```
+
+工作原理：
+1. 扫描原始文件找到每条记录的 `schinese` 插入位置（`display` 和 `desc` 段的 `token` 之后）
+2. 从 CSV 读取中文翻译（序号 + 中文名 + 中文描述）
+3. 在原始文件中插入 `\x01schinese\x00<值>\x00`，完成修补
+
+搭配 `binviewer.html` 的导出 CSV 功能使用效果最佳。
+
 ## 使用示例
 
 本项目以”以撒的结合”为例：
@@ -90,10 +160,13 @@ node edit_bin.js stats.bin set 1 descriptionCN "你解锁了抹大拉"
 1. 在 [SteamDB](https://steamdb.info/) 查询到游戏 ID 为 `250900`
 2. 在 `stats` 文件夹中找到 `UserGameStatsSchema_250900.bin`
 3. 复制出来，让 AI 读取本项目文件和成就文件，自行汉化，也可找到合适的汉化文本如wiki等让ai进行替换
-4. 将得到的文件重命名为 `UserGameStatsSchema_250900.bin` 并替换回原文件夹
-5. 将文件属性改为”只读”
-6. 重启 Steam
+4. 如果想自行汉化文本，可以用 `binviewer.html` 打开 .bin 文件导出为 CSV，汉化后导入即可。要将 `#` 列也导出，否则无法对应导入。CSV 中名称列为”简体中文_名称”，描述列为”简体中文_描述”，才可正确导入到相应字段
+5. 将得到的文件重命名为 `UserGameStatsSchema_250900.bin` 并替换回原文件夹
+6. 将文件属性改为”只读”
+7. 重启 Steam
 
 > 理论上所有 Steam 成就没有中文的游戏都可以这样操作（未验证）。
->字段数据格式应该是一样的
+
+> 但是他们的字段数据格式好像不一样，你可以扔给ai重写部分代码
+
 > 如果不行就反复鞭笞 AI 吧 相信它应该能解决问题的_(´ω｀)_
